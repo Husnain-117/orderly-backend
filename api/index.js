@@ -10,16 +10,19 @@ import orderRoutes from '../src/routes/orderRoutes.js';
 const app = express();
 
 // CORS (same logic as src/index.js, but without server listen)
+const normalizeOrigin = (o) => (o || '').replace(/\/+$/, '');
 const corsOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173')
   .split(',')
-  .map((s) => s.trim());
+  .map((s) => normalizeOrigin(s.trim()))
+  .filter(Boolean);
 const allowAllInDev = process.env.NODE_ENV !== 'production';
 
 const corsOptions = {
   origin(origin, callback) {
+    const reqOrigin = normalizeOrigin(origin);
     if (allowAllInDev) return callback(null, true);
-    if (!origin) return callback(null, true);
-    if (corsOrigins.includes(origin)) return callback(null, true);
+    if (!reqOrigin) return callback(null, true);
+    if (corsOrigins.includes(reqOrigin)) return callback(null, true);
     return callback(null, false);
   },
   credentials: true,
