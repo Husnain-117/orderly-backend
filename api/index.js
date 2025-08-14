@@ -44,6 +44,29 @@ app.use('/products', productRoutes);
 app.use('/upload', uploadRoutes);
 app.use('/orders', orderRoutes);
 
+// Quick env diagnostics (does not expose secrets)
+app.get('/env-check', (_req, res) => {
+  res.json({
+    ok: true,
+    env: process.env.NODE_ENV || 'development',
+    has: {
+      JWT_SECRET: Boolean(process.env.JWT_SECRET),
+      FRONTEND_URL: Boolean(process.env.FRONTEND_URL),
+      CORS_ORIGIN: Boolean(process.env.CORS_ORIGIN),
+      SUPABASE_URL: Boolean(process.env.SUPABASE_URL),
+      SUPABASE_SERVICE_ROLE_KEY: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
+      SMTP_FROM: Boolean(process.env.SMTP_FROM),
+    },
+  });
+});
+
+// Global error handler to avoid unhandled crashes
+// eslint-disable-next-line no-unused-vars
+app.use((err, _req, res, _next) => {
+  const message = err?.message || 'internal_error';
+  res.status(500).json({ ok: false, error: message });
+});
+
 // Export a request handler function for Vercel
 export default function handler(req, res) {
   return app(req, res);
