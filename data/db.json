@@ -1,0 +1,301 @@
+{
+  "users": [
+    {
+      "id": "c62835f7-b4de-47da-9b21-2397ddfc672d",
+      "email": "husnainn.akram@gmail.com",
+      "passwordHash": "$2a$10$8lUNTJq3CqZ2ZFkBPWjZce27iumOyP89z2UAyJz710FSkto2rwEqK",
+      "role": "distributor",
+      "organizationName": "Husnain Distributors",
+      "createdAt": "2025-08-11T18:57:43.293Z"
+    },
+    {
+      "id": "dac1c764-e107-4978-9853-7c20f8eb9c1a",
+      "email": "husnainakram336@gmail.com",
+      "passwordHash": "$2a$10$9AXrPy6Tn4roL/JzBCk2P.kMvZA/nFrFUbbMnPeePDI2nWmWd5jKu",
+      "role": "shopkeeper",
+      "organizationName": "GHAZI BOOK ",
+      "createdAt": "2025-08-12T09:32:19.560Z"
+    }
+  ],
+  "products": [
+    {
+      "id": "65022104-ff2a-4b4f-ba02-8db51115e4af",
+      "ownerId": "c62835f7-b4de-47da-9b21-2397ddfc672d",
+      "name": "Refined Sugar 1kg",
+      "price": 44,
+      "stock": 0,
+      "image": null,
+      "description": "",
+      "createdAt": "2025-08-12T08:32:46.208Z",
+      "updatedAt": "2025-08-12T10:25:20.752Z"
+    },
+    {
+      "id": "5f571976-7554-482c-bf16-56a33ade43db",
+      "ownerId": "c62835f7-b4de-47da-9b21-2397ddfc672d",
+      "name": "Premium Rice 5kg",
+      "price": 320,
+      "stock": 41,
+      "image": null,
+      "description": "",
+      "createdAt": "2025-08-12T08:32:46.210Z",
+      "updatedAt": "2025-08-12T11:45:52.638Z"
+    },
+    {
+      "id": "2eb763d8-4600-4e44-8e31-0fc43812d709",
+      "ownerId": "c62835f7-b4de-47da-9b21-2397ddfc672d",
+      "name": "Sunrise Tea 250g",
+      "price": 85,
+      "stock": 110,
+      "image": null,
+      "description": "",
+      "createdAt": "2025-08-12T08:35:01.835Z",
+      "updatedAt": "2025-08-12T19:31:39.159Z"
+    },
+    {
+      "id": "a09dff84-ee09-4a18-836e-f1d41ef32f65",
+      "ownerId": "c62835f7-b4de-47da-9b21-2397ddfc672d",
+      "name": "Refined Sugar 1kg",
+      "price": 44,
+      "stock": 66,
+      "image": null,
+      "description": "",
+      "createdAt": "2025-08-12T08:35:06.825Z",
+      "updatedAt": "2025-08-13T06:29:47.468Z"
+    },
+    {
+      "id": "9dbaa18c-1937-4c9e-85d9-e2a1fa8742ad",
+      "ownerId": "c62835f7-b4de-47da-9b21-2397ddfc672d",
+      "name": "Socks",
+      "price": 200,
+      "stock": 17,
+      "image": "/uploads/1755026097699_b83efe43-005d-415b-822f-d435385b968d.jpg",
+      "description": "a inported socks",
+      "createdAt": "2025-08-12T19:15:10.624Z",
+      "updatedAt": "2025-08-13T06:29:39.991Z"
+    },
+    {
+      "id": "d21e7679-b741-431b-b37c-ab336b2e79c7",
+      "ownerId": "c62835f7-b4de-47da-9b21-2397ddfc672d",
+      "name": "Sunrise Tea 250g",
+      "price": 85,
+      "stock": 120,
+      "image": null,
+      "description": "",
+      "createdAt": "2025-08-13T06:05:54.354Z",
+      "updatedAt": "2025-08-13T06:05:54.354Z"
+    },
+    {
+      "id": "3977511e-fed1-414a-9da6-1583693b70ae",
+      "ownerId": "c62835f7-b4de-47da-9b21-2397ddfc672d",
+      "name": "Refined Sugar 1kg",
+      "price": 44,
+      "stock": 80,
+      "image": null,
+      "description": "",
+      "createdAt": "2025-08-13T06:05:54.391Z",
+      "updatedAt": "2025-08-13T06:05:54.392Z"
+    },
+    {
+      "id": "f2d1ce0e-db42-4701-b31b-c247a1826322",
+      "ownerId": "c62835f7-b4de-47da-9b21-2397ddfc672d",
+      "name": "Premium Rice 5kg",
+      "price": 320,
+      "stock": 45,
+      "image": null,
+      "description": "",
+      "createdAt": "2025-08-13T06:05:54.406Z",
+      "updatedAt": "2025-08-13T06:05:54.406Z"
+    },
+    {
+      "id": "f9fe6bde-d26a-4ec9-a20b-7da0bfea20e7",
+      "ownerId": "c62835f7-b4de-47da-9b21-2397ddfc672d",
+      "name": "Organic Honey 500g",
+      "price": 180,
+      "stock": 25,
+      "image": null,
+      "description": "",
+      "createdAt": "2025-08-13T06:05:54.436Z",
+      "updatedAt": "2025-08-13T06:05:54.436Z"
+    },
+    {
+      "id": "ec41f02d-1ff0-4f88-adc9-901203dd3292",
+      "ownerId": "c62835f7-b4de-47da-9b21-2397ddfc672d",
+      "name": "Jelly Toy",
+      "price": 12,
+      "stock": 10,
+      "image": "/uploads/1755090280141_b83efe43-005d-415b-822f-d435385b968d.jpg",
+      "description": "a toy jelly",
+      "createdAt": "2025-08-13T13:05:01.856Z",
+      "updatedAt": "2025-08-13T13:05:01.856Z"
+    }
+  ],
+  "orders": [
+    {
+      "id": "7084ec6b-44c3-48d1-a52c-9b45dbd76718",
+      "userId": "dac1c764-e107-4978-9853-7c20f8eb9c1a",
+      "items": [
+        {
+          "productId": "2eb763d8-4600-4e44-8e31-0fc43812d709",
+          "name": "Sunrise Tea 250g",
+          "price": 85,
+          "qty": 1,
+          "shopName": "GHAZI BOOK "
+        }
+      ],
+      "distributorId": "c62835f7-b4de-47da-9b21-2397ddfc672d",
+      "distributorName": "",
+      "shopName": "GHAZI BOOK ",
+      "status": "delivered",
+      "createdAt": "2025-08-12T14:09:57.188Z",
+      "placedAt": "2025-08-12T19:29:17.960Z",
+      "outForDeliveryAt": "2025-08-12T19:30:05.057Z",
+      "deliveredAt": "2025-08-13T06:38:47.534Z"
+    },
+    {
+      "id": "7f360ba8-c537-479b-b7b9-f562eac6d2a7",
+      "userId": "dac1c764-e107-4978-9853-7c20f8eb9c1a",
+      "items": [
+        {
+          "productId": "9dbaa18c-1937-4c9e-85d9-e2a1fa8742ad",
+          "name": "Socks",
+          "price": 200,
+          "qty": 1,
+          "shopName": "GHAZI BOOK "
+        }
+      ],
+      "distributorId": "c62835f7-b4de-47da-9b21-2397ddfc672d",
+      "distributorName": "",
+      "shopName": "GHAZI BOOK ",
+      "status": "delivered",
+      "createdAt": "2025-08-13T06:42:10.253Z",
+      "confirmedAt": "2025-08-13T06:42:13.810Z",
+      "acceptedAt": "2025-08-13T06:42:54.034Z",
+      "placedAt": "2025-08-13T06:47:01.075Z",
+      "outForDeliveryAt": "2025-08-13T06:47:09.782Z",
+      "deliveredAt": "2025-08-13T06:47:18.068Z"
+    },
+    {
+      "id": "39da7ee3-8b2e-4dd4-8d5c-3d013a244d1a",
+      "userId": "dac1c764-e107-4978-9853-7c20f8eb9c1a",
+      "items": [
+        {
+          "productId": "461be620-0c41-4ad4-a0ab-73421193bd55",
+          "name": "Refined Sugar 1kg",
+          "price": 44,
+          "qty": 1,
+          "shopName": "GHAZI BOOK "
+        }
+      ],
+      "distributorId": "c62835f7-b4de-47da-9b21-2397ddfc672d",
+      "distributorName": "",
+      "shopName": "GHAZI BOOK ",
+      "status": "placed",
+      "createdAt": "2025-08-13T06:49:22.284Z",
+      "confirmedAt": "2025-08-13T06:49:26.297Z",
+      "acceptedAt": "2025-08-13T06:50:05.554Z",
+      "placedAt": "2025-08-13T06:50:12.700Z"
+    },
+    {
+      "id": "b408ffd8-6b4b-4839-8b7c-e0c4ecce25af",
+      "userId": "dac1c764-e107-4978-9853-7c20f8eb9c1a",
+      "items": [
+        {
+          "productId": "65022104-ff2a-4b4f-ba02-8db51115e4af",
+          "name": "Refined Sugar 1kg",
+          "price": 44,
+          "qty": 1,
+          "image": null,
+          "shopName": "GHAZI BOOK "
+        }
+      ],
+      "distributorId": "c62835f7-b4de-47da-9b21-2397ddfc672d",
+      "distributorName": "",
+      "shopName": "GHAZI BOOK ",
+      "status": "confirmed",
+      "createdAt": "2025-08-13T13:11:32.318Z",
+      "confirmedAt": "2025-08-13T13:16:58.936Z"
+    },
+    {
+      "id": "20a5f5a1-810e-451c-86b1-989c48c5d5aa",
+      "userId": "dac1c764-e107-4978-9853-7c20f8eb9c1a",
+      "items": [
+        {
+          "productId": "a09dff84-ee09-4a18-836e-f1d41ef32f65",
+          "name": "Refined Sugar 1kg",
+          "price": 44,
+          "qty": 2,
+          "image": null,
+          "shopName": "GHAZI BOOK "
+        }
+      ],
+      "distributorId": "c62835f7-b4de-47da-9b21-2397ddfc672d",
+      "distributorName": "",
+      "shopName": "GHAZI BOOK ",
+      "status": "placed",
+      "createdAt": "2025-08-13T19:09:00.647Z",
+      "confirmedAt": "2025-08-13T19:21:05.146Z",
+      "acceptedAt": "2025-08-13T19:22:32.413Z",
+      "placedAt": "2025-08-13T19:22:42.065Z"
+    },
+    {
+      "id": "b3f38f26-0388-4bb0-9092-be3ce53e80e7",
+      "userId": "dac1c764-e107-4978-9853-7c20f8eb9c1a",
+      "items": [
+        {
+          "productId": "d633063a-0ddd-4001-88fd-c45541bd18a2",
+          "name": "Elachi",
+          "price": 122,
+          "qty": 1,
+          "image": "/uploads/1755113369181_Old_vs_New_Order_Methods.png",
+          "shopName": "GHAZI BOOK "
+        }
+      ],
+      "distributorId": "470c7ef1-23e8-4285-8c78-b181b09262f6",
+      "distributorName": "",
+      "shopName": "GHAZI BOOK ",
+      "status": "placed",
+      "createdAt": "2025-08-13T19:30:19.409Z",
+      "confirmedAt": "2025-08-13T19:30:23.806Z",
+      "acceptedAt": "2025-08-13T19:32:09.889Z",
+      "placedAt": "2025-08-13T19:32:19.857Z"
+    },
+    {
+      "id": "8e0de2b0-2f33-4ea6-8433-c84642e45159",
+      "userId": "dac1c764-e107-4978-9853-7c20f8eb9c1a",
+      "items": [
+        {
+          "productId": "65022104-ff2a-4b4f-ba02-8db51115e4af",
+          "name": "Refined Sugar 1kg",
+          "price": 44,
+          "qty": 1,
+          "image": null,
+          "shopName": "GHAZI BOOK "
+        }
+      ],
+      "distributorId": "c62835f7-b4de-47da-9b21-2397ddfc672d",
+      "distributorName": "",
+      "shopName": "GHAZI BOOK ",
+      "status": "pending",
+      "createdAt": "2025-08-13T19:42:28.901Z"
+    },
+    {
+      "id": "90050e5d-1273-4c52-a0f2-aea22e8bbaad",
+      "userId": "dac1c764-e107-4978-9853-7c20f8eb9c1a",
+      "items": [
+        {
+          "productId": "ec41f02d-1ff0-4f88-adc9-901203dd3292",
+          "name": "Jelly Toy",
+          "price": 12,
+          "qty": 3,
+          "image": "/uploads/1755090280141_b83efe43-005d-415b-822f-d435385b968d.jpg",
+          "shopName": "GHAZI BOOK "
+        }
+      ],
+      "distributorId": "c62835f7-b4de-47da-9b21-2397ddfc672d",
+      "distributorName": "",
+      "shopName": "GHAZI BOOK ",
+      "status": "pending",
+      "createdAt": "2025-08-13T19:48:16.792Z"
+    }
+  ]
+}
