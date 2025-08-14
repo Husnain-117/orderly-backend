@@ -1,11 +1,17 @@
 import nodemailer from 'nodemailer';
 
 const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM } = process.env;
+const FRONTEND_URL = process.env.FRONTEND_URL || (process.env.NODE_ENV !== 'production' ? 'http://localhost:5173' : undefined);
 
 if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASS || !SMTP_FROM) {
   // We'll allow boot without SMTP to not crash dev, but log a warning
   // eslint-disable-next-line no-console
   console.warn('SMTP env vars missing. Set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM');
+}
+
+if (!FRONTEND_URL && process.env.NODE_ENV === 'production') {
+  // eslint-disable-next-line no-console
+  console.warn('FRONTEND_URL is not set. Email links will be disabled.');
 }
 
 export const transporter = nodemailer.createTransport({
@@ -73,7 +79,7 @@ export async function sendOrderReceivedEmail(to, { orderId, shopName, items, sta
         </table>
         
         <div style="text-align: center; margin-top: 25px; padding-top: 15px; border-top: 1px solid #e2e8f0;">
-          <a href="${process.env.FRONTEND_URL || 'https://your-orderly-app.com'}/wholesale/orders" 
+          <a href="${FRONTEND_URL || '#'}" 
              style="display: inline-block; background-color: #1e40af; color: white; padding: 10px 20px; 
                     text-decoration: none; border-radius: 5px; font-weight: 500;">
             View & Accept Order
@@ -195,7 +201,7 @@ export async function sendOrderReceivedEmail(to, { orderId, shopName, items, sta
         </div>
         
         <div style="text-align: center; margin-top: 25px; padding-top: 15px; border-top: 1px solid #e2e8f0;">
-          <a href="${process.env.FRONTEND_URL || 'https://your-orderly-app.com'}/shop/orders" 
+          <a href="${FRONTEND_URL ? `${FRONTEND_URL}/shop/orders` : '#'}" 
              style="display: inline-block; background-color: #16a34a; color: white; padding: 10px 20px; 
                     text-decoration: none; border-radius: 5px; font-weight: 500; margin-bottom: 10px;">
             View Order Status

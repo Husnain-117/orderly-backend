@@ -56,7 +56,10 @@ export async function listDistributors(_req, res) {
 
 // Issue a signed JWT and set it as an httpOnly cookie
 function setSessionCookie(res, payload) {
-  const secret = process.env.JWT_SECRET || 'dev-secret-change-me';
+  const secret = process.env.JWT_SECRET || (process.env.NODE_ENV !== 'production' ? 'dev-secret-change-me' : undefined);
+  if (!secret) {
+    throw new Error('server_misconfigured: JWT_SECRET is required in production');
+  }
   const token = jwt.sign(payload, secret, { expiresIn: '1h' });
   const isProd = process.env.NODE_ENV === 'production';
   res.cookie('sid', token, {
@@ -110,7 +113,8 @@ export async function me(req, res) {
   try {
     const token = req.cookies?.sid;
     if (!token) return res.status(401).json({ error: 'unauthorized' });
-    const secret = process.env.JWT_SECRET || 'dev-secret-change-me';
+    const secret = process.env.JWT_SECRET || (process.env.NODE_ENV !== 'production' ? 'dev-secret-change-me' : undefined);
+    if (!secret) return res.status(500).json({ error: 'server_misconfigured' });
     const payload = jwt.verify(token, secret);
     const user = await findUserByEmail(payload.email);
     if (!user) return res.status(401).json({ error: 'unauthorized' });
