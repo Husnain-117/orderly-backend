@@ -35,11 +35,16 @@ app.use(express.json());
 app.use(cookieParser());
 
 // Routes
+app.get('/', (_req, res) => {
+  res.json({ ok: true, message: 'Orderly serverless API running', env: process.env.NODE_ENV || 'development' });
+});
 app.get('/health', (_req, res) => res.json({ ok: true }));
 app.use('/auth', authRoutes);
 app.use('/products', productRoutes);
 app.use('/upload', uploadRoutes);
 app.use('/orders', orderRoutes);
 
-// Export the Express handler for Vercel
-export default app;
+// Export a request handler function for Vercel
+export default function handler(req, res) {
+  return app(req, res);
+}

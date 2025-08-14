@@ -38,13 +38,15 @@ app.options('*', cors(corsOptions));
 
 app.use(express.json());
 app.use(cookieParser());
-app.use(cors(corsOptions));
 
 // Static files for uploaded images
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 app.use('/uploads', express.static(path.join(rootDir, 'uploads')));
+
+// Friendly root message
+app.get('/', (_req, res) => res.json({ ok: true, message: 'Orderly server running', env: process.env.NODE_ENV || 'development' }));
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
 app.use('/auth', authRoutes);
@@ -54,5 +56,5 @@ app.use('/orders', orderRoutes);
 
 app.listen(PORT, () => {
   // eslint-disable-next-line no-console
-  console.log(`Auth server listening on http://localhost:${PORT}`);
+  console.log(`Auth server listening on port ${PORT}`);
 });

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import path from 'path';
 import { requireAuth, requireDistributor } from '../lib/auth.js';
-import { supabaseAdmin } from '../lib/supabase.js';
+import { getSupabaseAdmin } from '../lib/supabase.js';
 
 const BUCKET = process.env.SUPABASE_BUCKET || 'uploads';
 
@@ -22,6 +22,7 @@ router.use(requireAuth, requireDistributor);
 router.post('/image', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'file is required' });
+    const supabaseAdmin = getSupabaseAdmin();
 
     const ext = path.extname(req.file.originalname) || '.bin';
     const base = path
@@ -48,6 +49,9 @@ router.post('/image', upload.single('file'), async (req, res) => {
 
     return res.json({ ok: true, url: publicUrl, bucket: BUCKET, path: objectPath });
   } catch (err) {
+    if (err && err.message === 'supabase_not_configured') {
+      return res.status(500).json({ error: 'supabase_not_configured' });
+    }
     return res.status(500).json({ error: err.message || 'upload_failed' });
   }
 });
