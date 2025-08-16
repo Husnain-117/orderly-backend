@@ -94,39 +94,6 @@
       "description": "",
       "createdAt": "2025-08-13T06:05:54.391Z",
       "updatedAt": "2025-08-13T06:05:54.392Z"
-    },
-    {
-      "id": "f2d1ce0e-db42-4701-b31b-c247a1826322",
-      "ownerId": "c62835f7-b4de-47da-9b21-2397ddfc672d",
-      "name": "Premium Rice 5kg",
-      "price": 320,
-      "stock": 45,
-      "image": null,
-      "description": "",
-      "createdAt": "2025-08-13T06:05:54.406Z",
-      "updatedAt": "2025-08-13T06:05:54.406Z"
-    },
-    {
-      "id": "f9fe6bde-d26a-4ec9-a20b-7da0bfea20e7",
-      "ownerId": "c62835f7-b4de-47da-9b21-2397ddfc672d",
-      "name": "Organic Honey 500g",
-      "price": 180,
-      "stock": 25,
-      "image": null,
-      "description": "",
-      "createdAt": "2025-08-13T06:05:54.436Z",
-      "updatedAt": "2025-08-13T06:05:54.436Z"
-    },
-    {
-      "id": "ec41f02d-1ff0-4f88-adc9-901203dd3292",
-      "ownerId": "c62835f7-b4de-47da-9b21-2397ddfc672d",
-      "name": "Jelly Toy",
-      "price": 12,
-      "stock": 10,
-      "image": "/uploads/1755090280141_b83efe43-005d-415b-822f-d435385b968d.jpg",
-      "description": "a toy jelly",
-      "createdAt": "2025-08-13T13:05:01.856Z",
-      "updatedAt": "2025-08-13T13:05:01.856Z"
     }
   ],
   "orders": [

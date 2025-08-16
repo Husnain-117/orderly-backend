@@ -1,5 +1,4 @@
-import { Low } from 'lowdb';
-import { JSONFile } from 'lowdb/node';
+import { createDb } from '../lib/dbAdapter.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
@@ -15,16 +14,18 @@ const dbFile = path.join(dataDir, 'db.json');
 const defaultData = { users: [], products: [] };
 
 let db;
+let initialized = false;
 
 export async function initDb() {
-  if (db) return db;
-  fs.mkdirSync(dataDir, { recursive: true });
-  db = new Low(new JSONFile(dbFile), defaultData);
-  await db.read();
+  if (initialized) return db;
+  try { fs.mkdirSync(dataDir, { recursive: true }); } catch {}
+  const created = await createDb(dbFile, defaultData);
+  db = created.db;
   db.data ||= { ...defaultData };
-  // Ensure products array exists even if created by other model
   db.data.products ||= [];
+  db.data.users ||= db.data.users || [];
   await db.write();
+  initialized = true;
   return db;
 }
 

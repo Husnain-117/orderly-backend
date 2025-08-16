@@ -1,5 +1,4 @@
-import { Low } from 'lowdb';
-import { JSONFile } from 'lowdb/node';
+import { createDb } from '../lib/dbAdapter.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
@@ -13,16 +12,17 @@ const dbFile = path.join(dataDir, 'db.json');
 const defaultData = { orders: [] };
 
 let db;
+let initialized = false;
 
 export async function initDb() {
-  if (!db) {
-    fs.mkdirSync(dataDir, { recursive: true });
-    db = new Low(new JSONFile(dbFile), defaultData);
-    await db.read();
-    db.data ||= { ...defaultData };
-    db.data.orders ||= [];
-    await db.write();
-  }
+  if (initialized) return db;
+  try { fs.mkdirSync(dataDir, { recursive: true }); } catch {}
+  const created = await createDb(dbFile, defaultData);
+  db = created.db;
+  db.data ||= { ...defaultData };
+  db.data.orders ||= [];
+  await db.write();
+  initialized = true;
   return db;
 }
 
