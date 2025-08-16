@@ -9,20 +9,28 @@ import orderRoutes from '../src/routes/orderRoutes.js';
 // Build an Express app compatible with Vercel Serverless Functions
 const app = express();
 
-// CORS (same logic as src/index.js, but without server listen)
-const normalizeOrigin = (o) => (o || '').replace(/\/+$/, '');
-const corsOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173')
+// CORS (mirror src/index.js)
+const normalizeOrigin = (o) => (o || '').replace(/\/$/, '');
+const rawOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173')
   .split(',')
   .map((s) => normalizeOrigin(s.trim()))
   .filter(Boolean);
 const allowAllInDev = process.env.NODE_ENV !== 'production';
 
+function isAllowedOrigin(origin) {
+  if (!origin) return true;
+  const o = normalizeOrigin(origin);
+  for (const pat of rawOrigins) {
+    if (pat === o) return true;
+    if (pat.startsWith('*.') && o.endsWith(pat.slice(1))) return true;
+  }
+  return false;
+}
+
 const corsOptions = {
   origin(origin, callback) {
-    const reqOrigin = normalizeOrigin(origin);
     if (allowAllInDev) return callback(null, true);
-    if (!reqOrigin) return callback(null, true);
-    if (corsOrigins.includes(reqOrigin)) return callback(null, true);
+    if (isAllowedOrigin(origin)) return callback(null, true);
     return callback(null, false);
   },
   credentials: true,

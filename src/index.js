@@ -13,19 +13,28 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 
 // CORS (support multiple origins, credentials, and explicit headers/methods)
-const corsOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173')
+const normalizeOrigin = (o) => (o || '').replace(/\/$/, '');
+const rawOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173')
   .split(',')
-  .map((s) => s.trim());
+  .map((s) => normalizeOrigin(s.trim()))
+  .filter(Boolean);
 const allowAllInDev = process.env.NODE_ENV !== 'production';
+
+function isAllowedOrigin(origin) {
+  if (!origin) return true; // allow same-origin/no-origin requests
+  const o = normalizeOrigin(origin);
+  for (const pat of rawOrigins) {
+    if (pat === o) return true; // exact match
+    if (pat.startsWith('*.') && o.endsWith(pat.slice(1))) return true; // wildcard suffix match
+  }
+  return false;
+}
 
 const corsOptions = {
   origin(origin, callback) {
-    // In dev, allow all to avoid preflight 500s
     if (allowAllInDev) return callback(null, true);
-    // In prod, use allowlist
-    if (!origin) return callback(null, true);
-    if (corsOrigins.includes(origin)) return callback(null, true);
-    return callback(null, false); // do not throw to avoid 500
+    if (isAllowedOrigin(origin)) return callback(null, true);
+    return callback(null, false);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
