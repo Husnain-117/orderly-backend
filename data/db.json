@@ -324,12 +324,13 @@
       "distributorId": "c62835f7-b4de-47da-9b21-2397ddfc672d",
       "distributorName": "",
       "shopName": "GHAZI BOOK ",
-      "status": "out_for_delivery",
+      "status": "delivered",
       "createdAt": "2025-08-15T15:32:25.828Z",
       "confirmedAt": "2025-08-15T15:32:52.718Z",
       "acceptedAt": "2025-08-15T15:38:08.623Z",
       "placedAt": "2025-08-15T15:38:34.131Z",
-      "outForDeliveryAt": "2025-08-15T15:46:35.539Z"
+      "outForDeliveryAt": "2025-08-15T15:46:35.539Z",
+      "deliveredAt": "2025-08-21T10:53:18.195Z"
     }
   ]
 }

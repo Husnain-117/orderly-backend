@@ -1,6 +1,7 @@
 import { Low } from 'lowdb';
 import { JSONFile } from 'lowdb/node';
 import fs from 'fs';
+import path from 'path';
 
 // Decide if we should use in-memory DB (Vercel runtime has read-only filesystem)
 export function shouldUseMemoryDb() {
@@ -22,16 +23,27 @@ export async function createDb(filePath, defaultData) {
     db = new Low(adapter, defaultData);
     await db.read();
     if (!db.data) {
-      // Try to seed from bundled JSON file if present
-      try {
-        if (fs.existsSync(filePath)) {
-          const raw = fs.readFileSync(filePath, 'utf8');
-          const seed = JSON.parse(raw);
-          db.data = { ...defaultData, ...seed };
-        } else {
-          db.data = { ...defaultData };
+      // Try to seed from bundled JSON file if present (multiple fallbacks for serverless bundles)
+      const candidates = [
+        filePath,
+        path.resolve(process.cwd(), 'data', path.basename(filePath)),
+        path.resolve(process.cwd(), 'data', 'db.json'),
+      ];
+      let seeded = false;
+      for (const p of candidates) {
+        try {
+          if (fs.existsSync(p)) {
+            const raw = fs.readFileSync(p, 'utf8');
+            const seed = JSON.parse(raw);
+            db.data = { ...defaultData, ...seed };
+            seeded = true;
+            break;
+          }
+        } catch {
+          // continue to next candidate
         }
-      } catch {
+      }
+      if (!seeded) {
         db.data = { ...defaultData };
       }
     }

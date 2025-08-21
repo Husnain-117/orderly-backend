@@ -25,6 +25,31 @@ export async function initDb() {
   // Ensure collection exists
   db.data ||= { ...defaultData }
   db.data.users ||= []
+  // Optional env-based seeding for serverless/memory DBs
+  try {
+    if (!db.data.users.length) {
+      const seedEmail = process.env.SEED_ADMIN_EMAIL
+      const seedPass = process.env.SEED_ADMIN_PASSWORD
+      const seedRole = process.env.SEED_ADMIN_ROLE || 'distributor'
+      const seedOrg = process.env.SEED_ADMIN_ORG || 'Default Org'
+      if (seedEmail && seedPass) {
+        // Avoid duplicate if concurrently seeded
+        const exists = db.data.users.find(u => u.email === String(seedEmail).trim().toLowerCase())
+        if (!exists) {
+          const salt = await bcrypt.genSalt(10)
+          const passwordHash = await bcrypt.hash(seedPass, salt)
+          db.data.users.push({
+            id: crypto.randomUUID(),
+            email: String(seedEmail).trim().toLowerCase(),
+            passwordHash,
+            role: seedRole,
+            organizationName: seedOrg,
+            createdAt: new Date().toISOString(),
+          })
+        }
+      }
+    }
+  } catch {}
   await db.write()
   initialized = true
   return db
