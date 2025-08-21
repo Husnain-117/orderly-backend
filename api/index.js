@@ -9,12 +9,19 @@ import orderRoutes from '../src/routes/orderRoutes.js';
 // Build an Express app compatible with Vercel Serverless Functions
 const app = express();
 
-// CORS (mirror src/index.js)
+// CORS (mirror src/index.js with sane defaults)
 const normalizeOrigin = (o) => (o || '').replace(/\/$/, '');
-const rawOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173')
+const defaultOrigins = [
+  'http://localhost:5173',
+  'http://localhost:8080',
+  'http://192.168.0.100:8080',
+  'https://orderly-f.vercel.app',
+];
+const envOrigins = (process.env.CORS_ORIGIN || '')
   .split(',')
   .map((s) => normalizeOrigin(s.trim()))
   .filter(Boolean);
+const rawOrigins = [...new Set([...defaultOrigins.map(normalizeOrigin), ...envOrigins])];
 const allowAllInDev = process.env.NODE_ENV !== 'production';
 
 function isAllowedOrigin(origin) {

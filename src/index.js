@@ -14,10 +14,19 @@ const PORT = process.env.PORT || 4000;
 
 // CORS (support multiple origins, credentials, and explicit headers/methods)
 const normalizeOrigin = (o) => (o || '').replace(/\/$/, '');
-const rawOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173')
+// Defaults cover common local dev hosts and provided Vercel frontend
+const defaultOrigins = [
+  'http://localhost:5173',
+  'http://localhost:8080',
+  'http://192.168.0.100:8080',
+  'https://orderly-f.vercel.app',
+];
+// Merge env-provided origins
+const envOrigins = (process.env.CORS_ORIGIN || '')
   .split(',')
   .map((s) => normalizeOrigin(s.trim()))
   .filter(Boolean);
+const rawOrigins = [...new Set([...defaultOrigins.map(normalizeOrigin), ...envOrigins])];
 const allowAllInDev = process.env.NODE_ENV !== 'production';
 
 function isAllowedOrigin(origin) {

@@ -7,6 +7,7 @@ import crypto from 'crypto';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+
 // Use same DB file as users, add products collection
 const dataDir = path.join(__dirname, '../../data');
 const dbFile = path.join(dataDir, 'db.json');
@@ -81,3 +82,5 @@ export async function deleteProduct(id) {
   await db.write();
   return true;
 }
+
+
