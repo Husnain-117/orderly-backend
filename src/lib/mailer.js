@@ -27,8 +27,9 @@ export const transporter = nodemailer.createTransport({
 export async function sendOrderReceivedEmail(to, { orderId, shopName, items, status, fromEmail, fromName, distributorName, distributorEmail }) {
   let subject, text, html, from;
   
-  const productLines = items.map((item, idx) => `${idx + 1}. ${item.name} x${item.qty} (Rs${item.price})`).join('\n');
-  const totalAmount = items.reduce((sum, item) => sum + (item.qty * item.price), 0).toFixed(2);
+  const safeItems = Array.isArray(items) ? items : [];
+  const productLines = safeItems.map((item, idx) => `${idx + 1}. ${item.name} x${item.qty} (Rs${item.price})`).join('\n');
+  const totalAmount = safeItems.reduce((sum, item) => sum + (item.qty * item.price), 0).toFixed(2);
   
   // Set the 'from' field based on who's sending the email
   from = fromEmail ? `"${fromName || 'Orderly'}" <${fromEmail}>` : process.env.SMTP_FROM;
@@ -61,7 +62,7 @@ export async function sendOrderReceivedEmail(to, { orderId, shopName, items, sta
             </tr>
           </thead>
           <tbody>
-            ${items.map(item => `
+            ${safeItems.map(item => `
               <tr>
                 <td style="padding: 10px; border-bottom: 1px solid #f1f5f9;">${item.name}</td>
                 <td style="padding: 10px; border-bottom: 1px solid #f1f5f9; text-align: right;">${item.qty}</td>
@@ -106,7 +107,7 @@ export async function sendOrderReceivedEmail(to, { orderId, shopName, items, sta
         
         <h3>Products:</h3>
         <ul style="background: #f1f5f9; padding: 15px; border-radius: 6px;">
-          ${items.map(item => `<li>${item.name} x${item.qty} - Rs${(item.qty * item.price).toFixed(2)}</li>`).join('')}
+          ${safeItems.map(item => `<li>${item.name} x${item.qty} - Rs${(item.qty * item.price).toFixed(2)}</li>`).join('')}
         </ul>
         
         <p style="color: #059669; font-weight: bold;">📦 Your order is now being prepared for delivery.</p>
@@ -171,7 +172,7 @@ export async function sendOrderReceivedEmail(to, { orderId, shopName, items, sta
             </tr>
           </thead>
           <tbody>
-            ${items.map(item => `
+            ${safeItems.map(item => `
               <tr>
                 <td style="padding: 10px; border-bottom: 1px solid #f1f5f9;">
                   ${item.image ? `<img src="${item.image}" alt="${item.name}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px; margin-right: 10px;" />` : ''}
@@ -226,8 +227,9 @@ export async function sendOrderReceivedEmail(to, { orderId, shopName, items, sta
 
 // Dedicated function for shopkeeper order status updates
 export async function sendOrderStatusUpdateEmail(to, { orderId, shopName, items, status, statusText }) {
-  const totalAmount = items.reduce((sum, item) => sum + (item.qty * item.price), 0).toFixed(2);
-  const productLines = items.map((item, idx) => `${idx + 1}. ${item.name} x${item.qty} - Rs${(item.qty * item.price).toFixed(2)}`).join('\n');
+  const safeItems = Array.isArray(items) ? items : [];
+  const totalAmount = safeItems.reduce((sum, item) => sum + (item.qty * item.price), 0).toFixed(2);
+  const productLines = safeItems.map((item, idx) => `${idx + 1}. ${item.name} x${item.qty} - Rs${(item.qty * item.price).toFixed(2)}`).join('\n');
   
   let subject, text, html, emoji, color;
   
@@ -264,7 +266,7 @@ export async function sendOrderStatusUpdateEmail(to, { orderId, shopName, items,
       
       <h3>Products:</h3>
       <ul style="background: #f1f5f9; padding: 15px; border-radius: 6px;">
-        ${items.map(item => `<li>${item.name} x${item.qty} - Rs${(item.qty * item.price).toFixed(2)}</li>`).join('')}
+        ${safeItems.map(item => `<li>${item.name} x${item.qty} - Rs${(item.qty * item.price).toFixed(2)}</li>`).join('')}
       </ul>
       
       ${status === 'placed' ? '<p style="color: #059669; font-weight: bold;">📦 Your order is now being prepared for delivery.</p>' : ''}

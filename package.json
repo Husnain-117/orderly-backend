@@ -19,6 +19,7 @@
     "jsonwebtoken": "^9.0.2",
     "lowdb": "^7.0.1",
     "multer": "^2.0.2",
-    "nodemailer": "^6.9.13"
+    "nodemailer": "^6.9.13",
+    "pdfkit": "^0.17.1"
   }
 }

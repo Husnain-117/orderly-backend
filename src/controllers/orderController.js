@@ -2,7 +2,345 @@ import { createOrder, getOrdersByUser, confirmOrder, updateOrderItems, removeOrd
 import { markPlaced, markOutForDelivery, markAccepted, getOrdersByDistributor, markDelivered } from '../models/orderModel.js';
 import { getProductById, updateProduct } from '../models/productModel.js';
 import { findUserByEmail, findUserById } from '../models/userModel.js';
-import { sendOrderReceivedEmail } from '../lib/mailer.js';
+import { sendOrderReceivedEmail, transporter } from '../lib/mailer.js';
+import { createNotification } from '../models/notificationModel.js';
+
+// -------- Invoice helpers ---------
+function formatCurrency(n) {
+  const v = Number(n || 0);
+  return `Rs${v.toFixed(2)}`;
+}
+
+// Generic: ensure items carry product name/price/description before persisting
+async function enrichItemsWithProductDetails(items) {
+  if (!Array.isArray(items)) return items;
+  return Promise.all(
+    items.map(async (it) => {
+      const base = { ...it };
+      if (base?.productId) {
+        try {
+          const p = await getProductById(base.productId);
+          base.name = (base.name && String(base.name).trim()) ? base.name : (p?.name || '(Unnamed Product)');
+          if (typeof base.price !== 'number') base.price = Number(p?.price || 0);
+          if (base.description === undefined) base.description = p?.description || '';
+        } catch {}
+      } else {
+        base.name = (base.name && String(base.name).trim()) ? base.name : '(Unnamed Product)';
+      }
+      base.qty = Number(base.qty || 0);
+      return base;
+    })
+  );
+}
+
+function buildInvoiceHtml({ order, distributor, shop }) {
+  const org = distributor?.organizationName || distributor?.name || 'Distributor';
+  const brand = org;
+  const shopName = order?.shopName || shop?.organizationName || shop?.name || shop?.email || 'Shop';
+  const orderId = order?.id || '';
+  const createdAt = new Date(order?.createdAt || Date.now()).toLocaleString();
+  const lines = (order?.items || []).map((item, idx) => ({
+    i: idx + 1,
+    name: item.name,
+    desc: item.description || '',
+    qty: Number(item.qty || 0),
+    price: Number(item.price || 0),
+    total: Number(item.qty || 0) * Number(item.price || 0),
+  }));
+  const subtotal = lines.reduce((s, it) => s + it.total, 0);
+  const taxRate = 0; // extend later if needed
+  const tax = subtotal * taxRate;
+  const grand = subtotal + tax;
+
+  const rowsHtml = lines
+    .map(
+      (l) => `
+    <tr>
+      <td style="padding:8px;border-bottom:1px solid #e5e7eb;">${l.i}</td>
+      <td style="padding:8px;border-bottom:1px solid #e5e7eb;">
+        <div style="font-weight:600">${l.name}</div>
+        ${l.desc ? `<div style="font-size:12px;color:#6b7280;">${l.desc}</div>` : ''}
+      </td>
+      <td style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:right;">${l.qty}</td>
+      <td style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:right;">${formatCurrency(l.price)}</td>
+      <td style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:right;">${formatCurrency(l.total)}</td>
+    </tr>
+  `
+    )
+    .join('');
+
+  return `
+  <div style="font-family:Arial,sans-serif;max-width:760px;margin:0 auto;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden">
+    <div style="background:#0ea5e9;color:white;padding:18px 20px;display:flex;align-items:center;justify-content:space-between">
+      <div style="font-size:20px;font-weight:700;letter-spacing:0.3px">${brand}</div>
+      <div style="font-size:14px;opacity:.95">Invoice</div>
+    </div>
+    <div style="padding:18px 20px;background:#f8fafc;border-bottom:1px solid #e5e7eb">
+      <div style="display:flex;gap:24px;flex-wrap:wrap">
+        <div>
+          <div style="font-size:12px;color:#64748b">Invoice #</div>
+          <div style="font-weight:600">${orderId}</div>
+        </div>
+        <div>
+          <div style="font-size:12px;color:#64748b">Date</div>
+          <div style="font-weight:600">${createdAt}</div>
+        </div>
+        <div>
+          <div style="font-size:12px;color:#64748b">Status</div>
+          <div style="font-weight:600;text-transform:capitalize">${order?.status || '-'}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:24px;flex-wrap:wrap;margin-top:14px">
+        <div style="min-width:260px">
+          <div style="font-size:12px;color:#64748b">From</div>
+          <div style="font-weight:600">${org}</div>
+          ${distributor?.email ? `<div style="font-size:12px;color:#475569">${distributor.email}</div>` : ''}
+        </div>
+        <div style="min-width:260px">
+          <div style="font-size:12px;color:#64748b">Bill To</div>
+          <div style="font-weight:600">${shopName}</div>
+          ${shop?.email ? `<div style="font-size:12px;color:#475569">${shop.email}</div>` : ''}
+        </div>
+      </div>
+    </div>
+    <div style="padding:6px 20px 18px 20px">
+      <table style="width:100%;border-collapse:collapse;font-size:14px">
+        <thead>
+          <tr style="background:#f1f5f9;text-align:left">
+            <th style="padding:10px;border-bottom:1px solid #e5e7eb;width:56px">#</th>
+            <th style="padding:10px;border-bottom:1px solid #e5e7eb">Product</th>
+            <th style="padding:10px;border-bottom:1px solid #e5e7eb;text-align:right;width:80px">Qty</th>
+            <th style="padding:10px;border-bottom:1px solid #e5e7eb;text-align:right;width:120px">Price</th>
+            <th style="padding:10px;border-bottom:1px solid #e5e7eb;text-align:right;width:140px">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsHtml}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="4" style="padding:10px;text-align:right;font-weight:600">Subtotal</td>
+            <td style="padding:10px;text-align:right;font-weight:600">${formatCurrency(subtotal)}</td>
+          </tr>
+          ${taxRate ? `<tr>
+            <td colspan="4" style="padding:10px;text-align:right;font-weight:600">Tax (${(taxRate*100).toFixed(0)}%)</td>
+            <td style="padding:10px;text-align:right;font-weight:600">${formatCurrency(tax)}</td>
+          </tr>` : ''}
+          <tr>
+            <td colspan="4" style="padding:10px;text-align:right;font-weight:800;border-top:1px solid #e5e7eb">Grand Total</td>
+            <td style="padding:10px;text-align:right;font-weight:800;border-top:1px solid #e5e7eb">${formatCurrency(grand)}</td>
+          </tr>
+        </tfoot>
+      </table>
+      <div style="margin-top:18px;font-size:12px;color:#64748b">Thank you for your business.</div>
+    </div>
+  </div>`;
+}
+
+// Ensure items have proper product names (and fill price/description if missing)
+async function enrichOrderForInvoice(order) {
+  if (!order || !Array.isArray(order.items)) return order;
+  const items = await Promise.all(
+    order.items.map(async (it) => {
+      if (it?.name && typeof it.name === 'string' && it.name.trim()) return it;
+      if (it?.productId) {
+        try {
+          const p = await getProductById(it.productId);
+          return {
+            ...it,
+            name: p?.name || it?.name || '(Unnamed Product)',
+            price: typeof it?.price === 'number' ? it.price : Number(p?.price || 0),
+            description: it?.description ?? (p?.description || ''),
+          };
+        } catch {
+          return { ...it, name: it?.name || '(Unnamed Product)' };
+        }
+      }
+      return { ...it, name: it?.name || '(Unnamed Product)' };
+    })
+  );
+  return { ...order, items };
+}
+
+// Resolve order + parties for invoice depending on requester role (distributor vs shopkeeper)
+async function loadInvoiceContext(req, orderId) {
+  if (!orderId) throw new Error('orderId required');
+  const requesterId = req.user.id;
+  const role = (req.user.role || '').toLowerCase();
+  let order = null;
+  if (role === 'distributor') {
+    const orders = await getOrdersByDistributor(requesterId);
+    order = orders.find((o) => o.id === orderId);
+    if (!order) throw new Error('Order not found for distributor');
+  } else {
+    // shopkeeper or salesperson: restrict to own orders
+    const orders = await getOrdersByUser(requesterId);
+    order = orders.find((o) => o.id === orderId);
+    if (!order) throw new Error('Order not found for user');
+  }
+  const distributor = order?.distributorId ? await findUserById(order.distributorId) : await findUserById(req.user.id);
+  const shop = order?.userId ? await findUserById(order.userId) : null;
+  const enriched = await enrichOrderForInvoice(order);
+  const html = buildInvoiceHtml({ order: enriched, distributor, shop });
+  return { order: enriched, distributor, shop, html };
+}
+
+export async function getInvoiceHtml(req, res) {
+  try {
+    const { orderId } = req.params;
+    if (!orderId) return res.status(400).json({ error: 'orderId required' });
+    const { html } = await loadInvoiceContext(req, orderId);
+    return res.json({ ok: true, html });
+  } catch (err) {
+    return res.status(500).json({ error: err.message || 'failed to build invoice' });
+  }
+}
+
+// Stream a simple PDF rendering of the invoice
+export async function getInvoicePdf(req, res) {
+  try {
+    const { orderId } = req.params;
+    if (!orderId) return res.status(400).json({ error: 'orderId required' });
+    const { order, distributor, shop } = await loadInvoiceContext(req, orderId);
+
+    // Lazy import to avoid requiring pdfkit in non-PDF flows
+    const { default: PDFDocument } = await import('pdfkit');
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="invoice-${order.id}.pdf"`);
+
+    const doc = new PDFDocument({ size: 'A4', margin: 50 });
+    doc.pipe(res);
+
+    // Header
+    const org = distributor?.organizationName || distributor?.name || 'Distributor';
+    const shopName = order?.shopName || shop?.organizationName || shop?.name || shop?.email || 'Shop';
+    doc.fontSize(20).fillColor('#0ea5e9').text(org, { continued: false });
+    doc.fontSize(12).fillColor('#111827').text('Invoice', { align: 'right' });
+    doc.moveDown();
+
+    // Meta
+    doc.fontSize(10).fillColor('#6b7280');
+    doc.text(`Invoice #: ${order.id}`);
+    doc.text(`Date: ${new Date(order.createdAt || Date.now()).toLocaleString()}`);
+    doc.text(`Status: ${String(order.status || '').toUpperCase()}`);
+    doc.moveDown();
+
+    // Parties
+    doc.fontSize(12).fillColor('#111827').text('From:', { underline: true });
+    doc.fontSize(10).fillColor('#374151').text(org);
+    if (distributor?.email) doc.text(distributor.email);
+    doc.moveDown(0.5);
+    doc.fontSize(12).fillColor('#111827').text('Bill To:', { underline: true });
+    doc.fontSize(10).fillColor('#374151').text(shopName);
+    if (shop?.email) doc.text(shop.email);
+    doc.moveDown();
+
+    // Table header
+    doc.fontSize(11).fillColor('#111827');
+    doc.text('#', 50, doc.y, { continued: true });
+    doc.text('Product', 80, undefined, { continued: true });
+    doc.text('Qty', 320, undefined, { continued: true, align: 'right' });
+    doc.text('Price', 380, undefined, { continued: true, align: 'right' });
+    doc.text('Total', 460, undefined, { align: 'right' });
+    doc.moveTo(50, doc.y + 4).lineTo(545, doc.y + 4).strokeColor('#e5e7eb').stroke();
+
+    // Rows
+    const lines = (order.items || []).map((it, i) => ({
+      i: i + 1,
+      name: it.name,
+      qty: Number(it.qty || 0),
+      price: Number(it.price || 0),
+    }));
+    let subtotal = 0;
+    doc.moveDown(0.6);
+    for (const l of lines) {
+      const lineTotal = l.qty * l.price;
+      subtotal += lineTotal;
+      doc.fontSize(10).fillColor('#374151');
+      doc.text(String(l.i), 50, doc.y, { continued: true });
+      doc.text(l.name || '-', 80, undefined, { continued: true });
+      doc.text(String(l.qty), 320, undefined, { continued: true, align: 'right' });
+      doc.text(`Rs${l.price.toFixed(2)}`, 380, undefined, { continued: true, align: 'right' });
+      doc.text(`Rs${lineTotal.toFixed(2)}`, 460, undefined, { align: 'right' });
+    }
+
+    // Totals
+    doc.moveDown();
+    doc.moveTo(300, doc.y).lineTo(545, doc.y).strokeColor('#e5e7eb').stroke();
+    doc.moveDown(0.3);
+    doc.fontSize(11).fillColor('#111827');
+    doc.text('Subtotal', 320, doc.y, { continued: true, align: 'right' });
+    doc.text(`Rs${subtotal.toFixed(2)}`, 460, undefined, { align: 'right' });
+    const taxRate = 0;
+    const tax = subtotal * taxRate;
+    if (taxRate) {
+      doc.text(`Tax (${(taxRate * 100).toFixed(0)}%)`, 320, undefined, { continued: true, align: 'right' });
+      doc.text(`Rs${tax.toFixed(2)}`, 460, undefined, { align: 'right' });
+    }
+    const grand = subtotal + tax;
+    doc.font('Helvetica-Bold');
+    doc.text('Grand Total', 320, undefined, { continued: true, align: 'right' });
+    doc.text(`Rs${grand.toFixed(2)}`, 460, undefined, { align: 'right' });
+    doc.font('Helvetica');
+    doc.moveDown();
+    doc.fontSize(9).fillColor('#6b7280').text('Thank you for your business.');
+
+    doc.end();
+  } catch (err) {
+    return res.status(500).json({ error: err.message || 'failed to build invoice PDF' });
+  }
+}
+
+export async function sendInvoiceEmail(req, res) {
+  try {
+    const { orderId } = req.params;
+    const { to } = req.body || {};
+    if (!orderId) return res.status(400).json({ error: 'orderId required' });
+    const distId = req.user.id;
+    const orders = await getOrdersByDistributor(distId);
+    const order = orders.find((o) => o.id === orderId);
+    if (!order) return res.status(404).json({ error: 'Order not found for distributor' });
+    const distributor = await findUserById(distId);
+    const shop = order.userId ? await findUserById(order.userId) : null;
+    const enriched = await enrichOrderForInvoice(order);
+    const html = buildInvoiceHtml({ order: enriched, distributor, shop });
+    const toEmail = to || shop?.email;
+    if (!toEmail) return res.status(400).json({ error: 'recipient email not found' });
+    const subject = `Invoice for Order #${order.id} - ${distributor?.organizationName || 'Distributor'}`;
+    await transporter.sendMail({
+      from: process.env.SMTP_FROM,
+      to: toEmail,
+      subject,
+      html,
+      text: `Please see the invoice for your order #${order.id}.`,
+    });
+    // Create notifications: to shop (invoice sent) and optionally to distributor (sent confirmation)
+    try {
+      if (shop?.id) {
+        await createNotification({
+          userId: shop.id,
+          type: 'order',
+          title: 'Invoice sent',
+          message: `Invoice for order #${order.id} has been sent to your email`,
+          data: { orderId: order.id, status: 'invoice_sent' },
+        });
+      }
+      if (distributor?.id) {
+        await createNotification({
+          userId: distributor.id,
+          type: 'order',
+          title: 'Invoice emailed',
+          message: `Invoice for order #${order.id} emailed to ${toEmail}`,
+          data: { orderId: order.id, status: 'invoice_emailed' },
+        });
+      }
+    } catch {}
+    return res.json({ ok: true, message: 'Invoice sent', to: toEmail });
+  } catch (err) {
+    return res.status(500).json({ error: err.message || 'failed to send invoice' });
+  }
+}
 
 // Add to cart (simply creates a pending order)
 export async function addToCart(req, res) {
@@ -11,34 +349,150 @@ export async function addToCart(req, res) {
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: 'items array required' });
     }
-    // Optionally, validate product IDs and qty here
-    const detailedItems = [];
-    let distributorId = null, distributorName = null, shopName = null;
+
+    
+    // Build groups by distributor: { [distributorId]: { distributorName, items: [...] } }
+    const groups = new Map();
+    let shopName = null;
     // Fetch user/shop info
     const user = req.user;
     if (user && user.email) {
       const userObj = await findUserByEmail(user.email);
       shopName = userObj?.organizationName || userObj?.email || null;
     }
+
     for (const it of items) {
       const product = await getProductById(it.productId);
       if (!product) return res.status(404).json({ error: `Product not found: ${it.productId}` });
-      detailedItems.push({
+      const currentStock = Number(product.stock || 0);
+      if (currentStock <= 0) {
+        return res.status(400).json({ error: `Product '${product.name}' is out of stock` });
+      }
+      const dId = product.ownerId;
+      const dName = product.distributor || product.distributorName || '';
+      if (!groups.has(dId)) groups.set(dId, { distributorName: dName, items: [] });
+      const group = groups.get(dId);
+      group.items.push({
         productId: product.id,
         name: product.name,
         price: product.price,
-        qty: it.qty,
-        image: product.image || null, // Include product image if available
-        shopName, // Attach shop name to each item
+        qty: Number(it.qty || 1),
+        image: product.image || null,
+        shopName,
       });
-      // Assume all items in one order are from the same distributor (ownerId)
-      if (!distributorId) {
-        distributorId = product.ownerId;
-        distributorName = product.distributor || product.distributorName || '';
+    }
+
+    // For each distributor group, either append to existing pending order for this user+distributor, or create a new one
+    const createdOrUpdated = [];
+    // Get user's existing orders once for efficiency
+    const userOrders = await getOrdersByUser(req.user.id);
+
+    for (const [dId, payload] of groups.entries()) {
+      const dName = payload.distributorName;
+      const newItems = payload.items;
+
+      // Try to find an existing pending order for this distributor
+      let existing = (userOrders || []).find(o => o.status === 'pending' && (o.distributorId === dId));
+
+      // If distributorId was not persisted (e.g., Supabase minimal schema), infer by checking first item product owner
+      if (!existing) {
+        for (const o of (userOrders || []).filter(o => o.status === 'pending')) {
+          if (o.items && o.items.length > 0) {
+            const first = o.items[0];
+            try {
+              const prod = await getProductById(first.productId);
+              if (prod && prod.ownerId === dId) { existing = o; break; }
+            } catch {}
+          }
+        }
+      }
+
+      if (existing) {
+        // Merge items by productId (sum qty)
+        const mergedMap = new Map();
+        for (const it of existing.items || []) {
+          mergedMap.set(it.productId, { ...it });
+        }
+        for (const it of newItems) {
+          if (mergedMap.has(it.productId)) {
+            const prev = mergedMap.get(it.productId);
+            mergedMap.set(it.productId, { ...prev, qty: Number(prev.qty || 0) + Number(it.qty || 0) });
+          } else {
+            mergedMap.set(it.productId, { ...it });
+          }
+        }
+        let merged = Array.from(mergedMap.values());
+        // Enforce MOQ and apply bulk pricing per product based on final merged qty
+        const priced = [];
+        for (const it of merged) {
+          const product = await getProductById(it.productId);
+          if (!product) return res.status(404).json({ error: `Product not found: ${it.productId}` });
+          const qty = Number(it.qty || 0);
+          const moq = Number(product.moq ?? 1);
+          if (qty < moq) {
+            return res.status(400).json({ error: `Minimum order quantity for '${product.name}' is ${moq}. You have ${qty}.` });
+          }
+          // compute tier price
+          let unitPrice = Number(product.price || 0);
+          const tiers = Array.isArray(product.bulkPricing) ? product.bulkPricing : [];
+          if (tiers.length) {
+            // choose highest tier where qty >= minQty
+            let best = null;
+            for (const t of tiers) {
+              const minQty = Number(t.minQty || t.min_qty || 0);
+              const price = Number(t.price || 0);
+              if (qty >= minQty && Number.isFinite(price)) {
+                if (!best || minQty > best.minQty) best = { minQty, price };
+              }
+            }
+            if (best) unitPrice = best.price;
+          }
+          priced.push({ ...it, price: unitPrice });
+        }
+        merged = priced;
+        const updated = await updateOrderItems(existing.id, merged);
+        // Ensure distributor info is set when using file DB
+        if (updated) {
+          updated.distributorId ||= dId;
+          updated.distributorName ||= dName;
+        }
+        createdOrUpdated.push(updated || existing);
+      } else {
+        // Validate MOQ and apply pricing for new order items
+        const priced = [];
+        for (const it of newItems) {
+          const product = await getProductById(it.productId);
+          if (!product) return res.status(404).json({ error: `Product not found: ${it.productId}` });
+          const qty = Number(it.qty || 0);
+          const moq = Number(product.moq ?? 1);
+          if (qty < moq) {
+            return res.status(400).json({ error: `Minimum order quantity for '${product.name}' is ${moq}. You have ${qty}.` });
+          }
+          let unitPrice = Number(product.price || 0);
+          const tiers = Array.isArray(product.bulkPricing) ? product.bulkPricing : [];
+          if (tiers.length) {
+            let best = null;
+            for (const t of tiers) {
+              const minQty = Number(t.minQty || t.min_qty || 0);
+              const price = Number(t.price || 0);
+              if (qty >= minQty && Number.isFinite(price)) {
+                if (!best || minQty > best.minQty) best = { minQty, price };
+              }
+            }
+            if (best) unitPrice = best.price;
+          }
+          priced.push({ ...it, price: unitPrice });
+        }
+        const order = await createOrder({ userId: req.user.id, items: priced, distributorId: dId, distributorName: dName, shopName });
+        createdOrUpdated.push(order);
       }
     }
-    const order = await createOrder({ userId: req.user.id, items: detailedItems, distributorId, distributorName, shopName });
-    return res.status(201).json({ ok: true, order });
+
+    // Backward compatible response: if only one order affected, include `order` too
+    if (createdOrUpdated.length === 1) {
+      return res.status(201).json({ ok: true, order: createdOrUpdated[0], orders: createdOrUpdated });
+    }
+    return res.status(201).json({ ok: true, orders: createdOrUpdated });
   } catch (err) {
     return res.status(500).json({ error: err.message || 'failed to add to cart' });
   }
@@ -73,6 +527,18 @@ export async function markOrderDelivered(req, res) {
     } catch (emailErr) {
       console.warn('Failed to send shopkeeper delivered email:', emailErr?.message || emailErr);
     }
+    // Notification to shop: delivered
+    try {
+      if (order?.userId) {
+        await createNotification({
+          userId: order.userId,
+          type: 'order',
+          title: 'Order delivered',
+          message: `Your order #${order.id} was delivered`,
+          data: { orderId: order.id, status: 'delivered' },
+        });
+      }
+    } catch {}
     return res.json({ ok: true, message: 'Order marked as delivered.' });
   } catch (err) {
     return res.status(500).json({ error: err.message || 'failed to mark order delivered' });
@@ -84,7 +550,33 @@ export async function updateCartOrder(req, res) {
   try {
     const { orderId, items } = req.body;
     if (!orderId || !Array.isArray(items)) return res.status(400).json({ error: 'orderId and items required' });
-    const order = await updateOrderItems(orderId, items);
+    // Ensure items persist with product names, then enforce MOQ and compute price per tier
+    const enrichedItems = await enrichItemsWithProductDetails(items);
+    const priced = [];
+    for (const it of enrichedItems) {
+      const product = await getProductById(it.productId);
+      if (!product) return res.status(404).json({ error: `Product not found: ${it.productId}` });
+      const qty = Number(it.qty || 0);
+      const moq = Number(product.moq ?? 1);
+      if (qty < moq) {
+        return res.status(400).json({ error: `Minimum order quantity for '${product.name}' is ${moq}. You have ${qty}.` });
+      }
+      let unitPrice = Number(product.price || 0);
+      const tiers = Array.isArray(product.bulkPricing) ? product.bulkPricing : [];
+      if (tiers.length) {
+        let best = null;
+        for (const t of tiers) {
+          const minQty = Number(t.minQty || t.min_qty || 0);
+          const price = Number(t.price || 0);
+          if (qty >= minQty && Number.isFinite(price)) {
+            if (!best || minQty > best.minQty) best = { minQty, price };
+          }
+        }
+        if (best) unitPrice = best.price;
+      }
+      priced.push({ ...it, price: unitPrice });
+    }
+    const order = await updateOrderItems(orderId, priced);
     if (!order) return res.status(404).json({ error: 'Order not found or not pending' });
     return res.json({ ok: true, order });
   } catch (err) {
@@ -134,6 +626,18 @@ export async function markOrderPlaced(req, res) {
     } catch (emailErr) {
       console.warn('Failed to send shopkeeper placed email:', emailErr?.message || emailErr);
     }
+    // Notification to shop: placed
+    try {
+      if (order?.userId) {
+        await createNotification({
+          userId: order.userId,
+          type: 'order',
+          title: 'Order placed',
+          message: `Your order #${order.id} was placed by the distributor`,
+          data: { orderId: order.id, status: 'placed' },
+        });
+      }
+    } catch {}
     return res.json({ ok: true, message: 'Order marked as placed.' });
   } catch (err) {
     return res.status(500).json({ error: err.message || 'failed to mark order placed' });
@@ -169,6 +673,18 @@ export async function markOrderOutForDelivery(req, res) {
     } catch (emailErr) {
       console.warn('Failed to send shopkeeper out for delivery email:', emailErr?.message || emailErr);
     }
+    // Notification to shop: out for delivery
+    try {
+      if (order?.userId) {
+        await createNotification({
+          userId: order.userId,
+          type: 'order',
+          title: 'Out for delivery',
+          message: `Your order #${order.id} is out for delivery`,
+          data: { orderId: order.id, status: 'out_for_delivery' },
+        });
+      }
+    } catch {}
     return res.json({ ok: true, message: 'Order marked as out for delivery.' });
   } catch (err) {
     return res.status(500).json({ error: err.message || 'failed to mark order out for delivery' });
@@ -186,6 +702,16 @@ export async function confirmOrderAndDecreaseStock(req, res) {
     const order = userOrders.find(o => o.id === orderId);
     if (!order) return res.status(404).json({ error: 'Order not found' });
     if (order.status !== 'pending') return res.status(400).json({ error: 'Order is not pending' });
+
+    // Prevent confirmation if any product in the order has zero stock
+    for (const item of order.items || []) {
+      const product = await getProductById(item.productId);
+      if (!product) return res.status(404).json({ error: `Product not found: ${item.productId}` });
+      const currentStock = Number(product.stock || 0);
+      if (currentStock <= 0) {
+        return res.status(400).json({ error: `Product '${product.name}' is out of stock` });
+      }
+    }
 
     // Get distributor info from order's first item
     let distributorId = null, distributorName = null;
@@ -220,6 +746,19 @@ export async function confirmOrderAndDecreaseStock(req, res) {
     } catch (emailErr) {
       console.warn('Failed to send new order email to distributor:', emailErr?.message || emailErr);
     }
+
+    // Notification to distributor: new order
+    try {
+      if (distributorId) {
+        await createNotification({
+          userId: distributorId,
+          type: 'order',
+          title: 'New order received',
+          message: `New order #${confirmedOrder.id} from ${confirmedOrder.shopName || 'shop'}`,
+          data: { orderId: confirmedOrder.id, status: 'new_order' },
+        });
+      }
+    } catch {}
 
     return res.json({ 
       ok: true, 
@@ -282,6 +821,18 @@ export async function acceptOrderAndDecreaseStock(req, res) {
     } catch (emailErr) {
       console.warn('Failed to send shopkeeper acceptance email:', emailErr?.message || emailErr);
     }
+    // Notification to shop: accepted
+    try {
+      if (acceptedOrder?.userId) {
+        await createNotification({
+          userId: acceptedOrder.userId,
+          type: 'order',
+          title: 'Order accepted',
+          message: `Your order #${acceptedOrder.id} was accepted by the distributor`,
+          data: { orderId: acceptedOrder.id, status: 'accepted' },
+        });
+      }
+    } catch {}
 
     return res.json({ 
       ok: true, 
@@ -323,6 +874,23 @@ export async function getOrdersForCurrentDistributor(req, res) {
 
     // Optional filters: status, search, sort, pagination
     const { status, q, sort = 'createdAt_desc', limit, offset } = req.query || {};
+
+    // Strong filter: ensure orders actually belong to this distributor
+    const filteredByDistributor = [];
+    for (const o of orders) {
+      if (o.distributorId && o.distributorId === distributorId) {
+        filteredByDistributor.push(o);
+        continue;
+      }
+      // Fallback inference by checking first item's product owner
+      if (o.items && o.items.length > 0) {
+        try {
+          const prod = await getProductById(o.items[0].productId);
+          if (prod && prod.ownerId === distributorId) filteredByDistributor.push(o);
+        } catch {}
+      }
+    }
+    orders = filteredByDistributor;
 
     if (status) {
       const norm = String(status).toLowerCase();

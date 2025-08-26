@@ -6,6 +6,8 @@ import authRoutes from './routes/authRoutes.js';
 import productRoutes from './routes/productRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
+import analyticsRoutes from './routes/analyticsRoutes.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -71,6 +73,8 @@ app.use('/auth', authRoutes);
 app.use('/products', productRoutes);
 app.use('/upload', uploadRoutes);
 app.use('/orders', orderRoutes);
+app.use('/notifications', notificationRoutes);
+app.use('/analytics', analyticsRoutes);
 
 app.listen(PORT, () => {
   // eslint-disable-next-line no-console

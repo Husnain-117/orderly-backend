@@ -3,7 +3,7 @@ import { createProduct, listProducts, getProductById, updateProduct, deleteProdu
 // Create product (distributor only)
 export async function create(req, res) {
   try {
-    const { name, price, stock, image, description } = req.body || {};
+    const { name, price, stock, image, description, moq, bulkPricing } = req.body || {};
     if (!name || price === undefined) {
       return res.status(400).json({ error: 'name and price are required' });
     }
@@ -14,6 +14,8 @@ export async function create(req, res) {
       stock: stock ?? 0,
       image: image || null,
       description: description || '',
+      moq: moq !== undefined ? Number(moq) : undefined,
+      bulkPricing: bulkPricing !== undefined ? bulkPricing : undefined,
     });
     return res.status(201).json({ ok: true, product });
   } catch (err) {
@@ -23,15 +25,31 @@ export async function create(req, res) {
 
 // List all products with distributor name (public)
 import { initDb as initUserDb } from '../models/userModel.js';
-import path from 'path';
+import { getSupabaseAdmin, isSupabaseConfigured } from '../lib/supabase.js';
 
 export async function listAllPublic(_req, res) {
   try {
     // Get products
     const products = await listProducts();
-    // Get users
-    const userDb = await initUserDb();
-    const users = userDb.data?.users || [];
+    // Get distributors (users with role=distributor)
+    let users = [];
+    if (isSupabaseConfigured()) {
+      const sb = getSupabaseAdmin();
+      const { data, error } = await sb
+        .from('users')
+        .select('id, email, role, organization_name')
+        .eq('role', 'distributor');
+      if (error) throw new Error(error.message);
+      users = (data || []).map(u => ({
+        id: u.id,
+        email: u.email,
+        role: u.role,
+        organizationName: u.organization_name,
+      }));
+    } else {
+      const userDb = await initUserDb();
+      users = userDb.data?.users || [];
+    }
     // Attach distributor name and ensure image URLs are complete
     const result = products.map((p) => {
       const owner = users.find((u) => u.id === p.ownerId);
@@ -106,17 +124,76 @@ export async function bulkCreate(req, res) {
   try {
     const items = Array.isArray(req.body?.products) ? req.body.products : [];
     if (!items.length) return res.status(400).json({ error: 'products array is required' });
+
+    // Validate and normalize payload
+    const MAX_ITEMS = 500;
     const ownerId = req.user.id;
+    const normalized = items
+      .slice(0, MAX_ITEMS)
+      .map((it) => ({
+        name: (it?.name ?? '').toString().trim(),
+        price: Number(it?.price ?? 0),
+        stock: Number(it?.stock ?? 0),
+        image: it?.image ? String(it.image).trim() : null,
+        description: it?.description ? String(it.description).trim() : '',
+        moq: it?.moq !== undefined ? Number(it.moq) : undefined,
+        bulkPricing: it?.bulkPricing !== undefined ? it.bulkPricing : undefined,
+      }))
+      .filter((x) => x.name && !Number.isNaN(x.price) && x.price > 0);
+
+    if (!normalized.length) return res.status(400).json({ error: 'no valid products to import' });
+
+    // Supabase batch insert for performance
+    if (isSupabaseConfigured()) {
+      const sb = getSupabaseAdmin();
+      const rows = normalized.map((n) => ({
+        owner_user_id: ownerId,
+        name: n.name,
+        price: n.price,
+        stock: n.stock,
+        images: n.image ? [n.image] : null,
+        description: n.description || null,
+        moq: n.moq !== undefined ? Number(n.moq) : null,
+        bulk_pricing: n.bulkPricing !== undefined ? n.bulkPricing : null,
+      }));
+      const { data, error } = await sb
+        .from('products')
+        .insert(rows)
+        .select('*');
+      if (error) throw new Error(error.message);
+      const products = (data || []).map((p) => {
+        const imgs = Array.isArray(p.images)
+          ? p.images
+          : (typeof p.images === 'string'
+              ? (() => { try { const v = JSON.parse(p.images); return Array.isArray(v) ? v : []; } catch { return []; } })()
+              : []);
+        return {
+          id: p.id,
+          ownerId: p.owner_user_id,
+          name: p.name,
+          price: Number(p.price),
+          stock: Number(p.stock),
+          image: imgs[0] || null,
+          description: p.description || '',
+          createdAt: p.created_at,
+          updatedAt: p.updated_at,
+        };
+      });
+      return res.status(201).json({ ok: true, created: products.length, products });
+    }
+
+    // LowDB fallback: create sequentially
     const results = [];
-    for (const it of items) {
-      if (!it?.name || it?.price === undefined) continue;
+    for (const it of normalized) {
       const product = await createProduct({
         ownerId,
-        name: String(it.name).trim(),
-        price: Number(it.price),
-        stock: Number(it.stock ?? 0),
-        image: it.image ? String(it.image).trim() : null,
-        description: it.description ? String(it.description).trim() : '',
+        name: it.name,
+        price: it.price,
+        stock: it.stock,
+        image: it.image,
+        description: it.description,
+        moq: it.moq,
+        bulkPricing: it.bulkPricing,
       });
       results.push(product);
     }
