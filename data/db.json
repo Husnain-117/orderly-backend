@@ -385,6 +385,22 @@
       "status": "approved",
       "createdAt": "2025-08-26T10:22:57.299Z",
       "updatedAt": "2025-08-26T10:23:16.498Z"
+    },
+    {
+      "id": "1a497f60-f67d-4aea-922a-3717e1aac27c",
+      "salespersonId": "0fb3a02f-f01a-4627-b3d2-0fbffef85291",
+      "distributorId": "2bd268b2-423f-4a63-a299-6309d484e4ae",
+      "status": "unlinked",
+      "createdAt": "2025-08-26T14:56:53.801Z",
+      "updatedAt": "2025-08-26T14:56:53.801Z"
+    },
+    {
+      "id": "a7960a8f-70b4-43be-9253-7e03a7ed80e2",
+      "salespersonId": "0fb3a02f-f01a-4627-b3d2-0fbffef85291",
+      "distributorId": "2bd268b2-423f-4a63-a299-6309d484e4ae",
+      "status": "approved",
+      "createdAt": "2025-08-26T14:58:22.783Z",
+      "updatedAt": "2025-08-26T14:59:17.002Z"
     }
   ],
   "notifications": []
