@@ -63,18 +63,19 @@ app.use(cookieParser());
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
-app.use('/uploads', express.static(path.join(rootDir, 'uploads')));
+app.use('/api/uploads', express.static(path.join(rootDir, 'uploads')));
 
 // Friendly root message
 app.get('/', (_req, res) => res.json({ ok: true, message: 'Orderly server running', env: process.env.NODE_ENV || 'development' }));
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
-app.use('/auth', authRoutes);
-app.use('/products', productRoutes);
-app.use('/upload', uploadRoutes);
-app.use('/orders', orderRoutes);
-app.use('/notifications', notificationRoutes);
-app.use('/analytics', analyticsRoutes);
+// API routes with /api prefix to match frontend
+app.use('/api/auth', authRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/upload', uploadRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 app.listen(PORT, () => {
   // eslint-disable-next-line no-console
