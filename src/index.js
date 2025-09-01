@@ -22,6 +22,9 @@ const defaultOrigins = [
   'http://localhost:8080',
   'http://192.168.0.100:8080',
   'https://orderly-f.vercel.app',
+  'https://orderly-eight.vercel.app',
+  'https://orderly.vercel.app',
+  'https://*.vercel.app', // Allow all Vercel preview deployments
 ];
 // Merge env-provided origins
 const envOrigins = (process.env.CORS_ORIGIN || '')
@@ -45,12 +48,15 @@ const corsOptions = {
   origin(origin, callback) {
     if (allowAllInDev) return callback(null, true);
     if (isAllowedOrigin(origin)) return callback(null, true);
-    return callback(null, false);
+    console.warn('CORS blocked for origin:', origin);
+    return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  exposedHeaders: ['Content-Length', 'Content-Type'],
   optionsSuccessStatus: 204,
+  maxAge: 86400, // 24 hours
 };
 
 app.use(cors(corsOptions));
