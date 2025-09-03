@@ -53,10 +53,9 @@ export async function listAllPublic(_req, res) {
       const owner = users.find((u) => u.id === p.ownerId);
       let imageUrl = p.image;
       
-      // If image exists but is a relative path, make it an absolute URL
+      // If image exists but is a relative path, make it point to API static uploads
       if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('/')) {
-        // Assuming images are served from the /uploads directory
-        imageUrl = `/uploads/${imageUrl}`;
+        imageUrl = `/api/uploads/${imageUrl}`;
       }
       
       return {
@@ -75,7 +74,14 @@ export async function listAllPublic(_req, res) {
 export async function listMine(req, res) {
   try {
     const items = await listProducts({ ownerOnly: true, ownerId: req.user.id });
-    return res.json({ ok: true, products: items });
+    // Normalize image URLs for non-HTTP images to API static path
+    const normalized = items.map((p) => ({
+      ...p,
+      image: p.image && !p.image.startsWith('http') && !p.image.startsWith('/')
+        ? `/api/uploads/${p.image}`
+        : p.image,
+    }));
+    return res.json({ ok: true, products: normalized });
   } catch (err) {
     return res.status(500).json({ error: err.message || 'failed to fetch products' });
   }
