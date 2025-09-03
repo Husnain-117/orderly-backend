@@ -7,6 +7,7 @@ import uploadRoutes from '../src/routes/uploadRoutes.js';
 import orderRoutes from '../src/routes/orderRoutes.js';
 import notificationRoutes from '../src/routes/notificationRoutes.js';
 import analyticsRoutes from '../src/routes/analyticsRoutes.js';
+import linkRoutes from '../src/routes/linkRoutes.js';
 
 // Build an Express app compatible with Vercel Serverless Functions
 const app = express();
@@ -66,6 +67,7 @@ app.use('/upload', uploadRoutes);
 app.use('/orders', orderRoutes);
 app.use('/notifications', notificationRoutes);
 app.use('/analytics', analyticsRoutes);
+app.use('/links', linkRoutes);
 
 // Quick env diagnostics (does not expose secrets)
 app.get('/env-check', (_req, res) => {
