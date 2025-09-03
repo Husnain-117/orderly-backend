@@ -3,7 +3,7 @@ import { createProduct, listProducts, getProductById, updateProduct, deleteProdu
 // Create product (distributor only)
 export async function create(req, res) {
   try {
-    const { name, price, stock, image, description, moq, bulkPricing } = req.body || {};
+    const { name, price, stock, image, description } = req.body || {};
     if (!name || price === undefined) {
       return res.status(400).json({ error: 'name and price are required' });
     }
@@ -14,8 +14,6 @@ export async function create(req, res) {
       stock: stock ?? 0,
       image: image || null,
       description: description || '',
-      moq: moq !== undefined ? Number(moq) : undefined,
-      bulkPricing: bulkPricing !== undefined ? bulkPricing : undefined,
     });
     return res.status(201).json({ ok: true, product });
   } catch (err) {
@@ -136,8 +134,6 @@ export async function bulkCreate(req, res) {
         stock: Number(it?.stock ?? 0),
         image: it?.image ? String(it.image).trim() : null,
         description: it?.description ? String(it.description).trim() : '',
-        moq: it?.moq !== undefined ? Number(it.moq) : undefined,
-        bulkPricing: it?.bulkPricing !== undefined ? it.bulkPricing : undefined,
       }))
       .filter((x) => x.name && !Number.isNaN(x.price) && x.price > 0);
 
@@ -153,8 +149,6 @@ export async function bulkCreate(req, res) {
         stock: n.stock,
         images: n.image ? [n.image] : null,
         description: n.description || null,
-        moq: n.moq !== undefined ? Number(n.moq) : null,
-        bulk_pricing: n.bulkPricing !== undefined ? n.bulkPricing : null,
       }));
       const { data, error } = await sb
         .from('products')
@@ -192,8 +186,6 @@ export async function bulkCreate(req, res) {
         stock: it.stock,
         image: it.image,
         description: it.description,
-        moq: it.moq,
-        bulkPricing: it.bulkPricing,
       });
       results.push(product);
     }

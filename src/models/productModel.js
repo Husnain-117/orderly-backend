@@ -8,27 +8,6 @@ import { getSupabaseAdmin, isSupabaseConfigured } from '../lib/supabase.js'
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ---- Helpers for bulk pricing tiers ----
-// Accepts various shapes (stringified JSON or array) and returns [{ minQty, price }, ...] sorted and valid
-function normalizeBulkPricing(value) {
-  try {
-    const v = Array.isArray(value)
-      ? value
-      : (typeof value === 'string' ? JSON.parse(value) : []);
-    const arr = Array.isArray(v) ? v : [];
-    return arr
-      .map((t) => ({ minQty: Number(t.minQty ?? t.min_qty ?? t.qty ?? 0), price: Number(t.price ?? 0) }))
-      .filter((t) => Number.isFinite(t.minQty) && t.minQty > 0 && Number.isFinite(t.price) && t.price >= 0)
-      .sort((a, b) => a.minQty - b.minQty);
-  } catch {
-    return [];
-  }
-}
-
-function sanitizeBulkPricing(value) {
-  return normalizeBulkPricing(value);
-}
-
 
 // Use same DB file as users, add products collection
 const dataDir = path.join(__dirname, '../../data');
@@ -52,7 +31,7 @@ export async function initDb() {
   return db;
 }
 
-export async function createProduct({ ownerId, name, price, stock, image, description, moq, bulkPricing }) {
+export async function createProduct({ ownerId, name, price, stock, image, description }) {
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdmin()
     const row = {
@@ -63,8 +42,6 @@ export async function createProduct({ ownerId, name, price, stock, image, descri
       stock: Number(stock ?? 0),
       images: image ? [String(image).trim()] : null,
       description: description ? String(description).trim() : null,
-      moq: Number(moq ?? 1),
-      bulk_pricing: Array.isArray(bulkPricing) ? bulkPricing : null,
     }
     const { data, error } = await sb.from('products').insert(row).select('*').maybeSingle()
     if (error) throw new Error(error.message)
@@ -81,8 +58,6 @@ export async function createProduct({ ownerId, name, price, stock, image, descri
       stock: Number(data.stock),
       image: imgs[0] || null,
       description: data.description || '',
-      moq: Number(data.moq ?? 1),
-      bulkPricing: normalizeBulkPricing(data.bulk_pricing),
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     }
@@ -96,8 +71,6 @@ export async function createProduct({ ownerId, name, price, stock, image, descri
     stock: Number(stock ?? 0),
     image: image ? String(image).trim() : null,
     description: description ? String(description).trim() : '',
-    moq: Number(moq ?? 1),
-    bulkPricing: sanitizeBulkPricing(bulkPricing),
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -127,8 +100,6 @@ export async function listProducts({ ownerOnly, ownerId } = {}) {
       stock: Number(p.stock),
       image: imgs[0] || null,
       description: p.description || '',
-      moq: Number(p.moq ?? 1),
-      bulkPricing: normalizeBulkPricing(p.bulk_pricing),
       createdAt: p.created_at,
       updatedAt: p.updated_at,
     })
@@ -159,8 +130,6 @@ export async function getProductById(id) {
       stock: Number(data.stock),
       image: imgs[0] || null,
       description: data.description || '',
-      moq: Number(data.moq ?? 1),
-      bulkPricing: normalizeBulkPricing(data.bulk_pricing),
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     }
@@ -178,8 +147,7 @@ export async function updateProduct(id, changes) {
     if (changes.stock !== undefined) patch.stock = Number(changes.stock)
     if (changes.image !== undefined) patch.images = changes.image ? [String(changes.image).trim()] : null
     if (changes.description !== undefined) patch.description = String(changes.description).trim()
-    if (changes.moq !== undefined) patch.moq = Number(changes.moq)
-    if (changes.bulkPricing !== undefined) patch.bulk_pricing = sanitizeBulkPricing(changes.bulkPricing)
+    // bulk pricing removed
     patch.updated_at = new Date().toISOString()
     const { data, error } = await sb.from('products').update(patch).eq('id', id).select('*').maybeSingle()
     if (error) throw new Error(error.message)
@@ -197,8 +165,6 @@ export async function updateProduct(id, changes) {
       stock: Number(data.stock),
       image: imgs[0] || null,
       description: data.description || '',
-      moq: Number(data.moq ?? 1),
-      bulkPricing: normalizeBulkPricing(data.bulk_pricing),
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     }
@@ -211,8 +177,6 @@ export async function updateProduct(id, changes) {
   if (changes.stock !== undefined) p.stock = Number(changes.stock);
   if (changes.image !== undefined) p.image = changes.image ? String(changes.image).trim() : null;
   if (changes.description !== undefined) p.description = String(changes.description).trim();
-  if (changes.moq !== undefined) p.moq = Number(changes.moq);
-  if (changes.bulkPricing !== undefined) p.bulkPricing = sanitizeBulkPricing(changes.bulkPricing);
   p.updatedAt = new Date().toISOString();
   await db.write();
   return p;

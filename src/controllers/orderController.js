@@ -422,31 +422,14 @@ export async function addToCart(req, res) {
           }
         }
         let merged = Array.from(mergedMap.values());
-        // Enforce MOQ and apply bulk pricing per product based on final merged qty
+        // Apply simple unit pricing (no MOQ, no bulk tiers)
         const priced = [];
         for (const it of merged) {
           const product = await getProductById(it.productId);
           if (!product) return res.status(404).json({ error: `Product not found: ${it.productId}` });
           const qty = Number(it.qty || 0);
-          const moq = Number(product.moq ?? 1);
-          if (qty < moq) {
-            return res.status(400).json({ error: `Minimum order quantity for '${product.name}' is ${moq}. You have ${qty}.` });
-          }
-          // compute tier price
+          // Simple pricing only
           let unitPrice = Number(product.price || 0);
-          const tiers = Array.isArray(product.bulkPricing) ? product.bulkPricing : [];
-          if (tiers.length) {
-            // choose highest tier where qty >= minQty
-            let best = null;
-            for (const t of tiers) {
-              const minQty = Number(t.minQty || t.min_qty || 0);
-              const price = Number(t.price || 0);
-              if (qty >= minQty && Number.isFinite(price)) {
-                if (!best || minQty > best.minQty) best = { minQty, price };
-              }
-            }
-            if (best) unitPrice = best.price;
-          }
           priced.push({ ...it, price: unitPrice });
         }
         merged = priced;
@@ -458,29 +441,14 @@ export async function addToCart(req, res) {
         }
         createdOrUpdated.push(updated || existing);
       } else {
-        // Validate MOQ and apply pricing for new order items
+        // Simple unit pricing for new order items (no MOQ, no bulk tiers)
         const priced = [];
         for (const it of newItems) {
           const product = await getProductById(it.productId);
           if (!product) return res.status(404).json({ error: `Product not found: ${it.productId}` });
           const qty = Number(it.qty || 0);
-          const moq = Number(product.moq ?? 1);
-          if (qty < moq) {
-            return res.status(400).json({ error: `Minimum order quantity for '${product.name}' is ${moq}. You have ${qty}.` });
-          }
+          // Simple pricing only
           let unitPrice = Number(product.price || 0);
-          const tiers = Array.isArray(product.bulkPricing) ? product.bulkPricing : [];
-          if (tiers.length) {
-            let best = null;
-            for (const t of tiers) {
-              const minQty = Number(t.minQty || t.min_qty || 0);
-              const price = Number(t.price || 0);
-              if (qty >= minQty && Number.isFinite(price)) {
-                if (!best || minQty > best.minQty) best = { minQty, price };
-              }
-            }
-            if (best) unitPrice = best.price;
-          }
           priced.push({ ...it, price: unitPrice });
         }
         const order = await createOrder({ userId: req.user.id, items: priced, distributorId: dId, distributorName: dName, shopName });
@@ -550,30 +518,15 @@ export async function updateCartOrder(req, res) {
   try {
     const { orderId, items } = req.body;
     if (!orderId || !Array.isArray(items)) return res.status(400).json({ error: 'orderId and items required' });
-    // Ensure items persist with product names, then enforce MOQ and compute price per tier
+    // Ensure items persist with product names; compute simple unit price (no MOQ, no tiers)
     const enrichedItems = await enrichItemsWithProductDetails(items);
     const priced = [];
     for (const it of enrichedItems) {
       const product = await getProductById(it.productId);
       if (!product) return res.status(404).json({ error: `Product not found: ${it.productId}` });
       const qty = Number(it.qty || 0);
-      const moq = Number(product.moq ?? 1);
-      if (qty < moq) {
-        return res.status(400).json({ error: `Minimum order quantity for '${product.name}' is ${moq}. You have ${qty}.` });
-      }
+      // Simple pricing only
       let unitPrice = Number(product.price || 0);
-      const tiers = Array.isArray(product.bulkPricing) ? product.bulkPricing : [];
-      if (tiers.length) {
-        let best = null;
-        for (const t of tiers) {
-          const minQty = Number(t.minQty || t.min_qty || 0);
-          const price = Number(t.price || 0);
-          if (qty >= minQty && Number.isFinite(price)) {
-            if (!best || minQty > best.minQty) best = { minQty, price };
-          }
-        }
-        if (best) unitPrice = best.price;
-      }
       priced.push({ ...it, price: unitPrice });
     }
     const order = await updateOrderItems(orderId, priced);
