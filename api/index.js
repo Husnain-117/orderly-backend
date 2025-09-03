@@ -18,6 +18,7 @@ const defaultOrigins = [
   'http://localhost:8080',
   'http://192.168.0.100:8080',
   'https://orderly-f.vercel.app',
+  'https://orderly-eight.vercel.app',
 ];
 const envOrigins = (process.env.CORS_ORIGIN || '')
   .split(',')

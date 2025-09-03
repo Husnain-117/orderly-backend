@@ -17,6 +17,27 @@ const defaultData = { users: [], salespersonLinks: [] }
 
 // List salesperson link requests for a given distributor
 export async function listSalespersonLinkRequestsForDistributor(distributorId) {
+  if (isSupabaseConfigured()) {
+    try {
+      const sb = getSupabaseAdmin()
+      const { data, error } = await sb
+        .from('salesperson_links')
+        .select('*')
+        .eq('distributor_id', distributorId)
+        .order('updated_at', { ascending: false })
+      if (error) throw error
+      return (data || []).map(row => ({
+        id: row.id,
+        salespersonId: row.salesperson_id,
+        distributorId: row.distributor_id,
+        status: row.status,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      }))
+    } catch (e) {
+      // Fallback to LowDB when table missing or any error
+    }
+  }
   await initDb()
   return db.data.salespersonLinks
     .filter((r) => r.distributorId === distributorId)
@@ -24,6 +45,58 @@ export async function listSalespersonLinkRequestsForDistributor(distributorId) {
 }
 
 export async function approveSalespersonLinkRequest(requestId, distributorId) {
+  if (isSupabaseConfigured()) {
+    try {
+      const sb = getSupabaseAdmin()
+      // Load request and verify ownership
+      const { data: reqRow, error: reqErr } = await sb
+        .from('salesperson_links')
+        .select('*')
+        .eq('id', requestId)
+        .maybeSingle()
+      if (reqErr) throw reqErr
+      if (!reqRow) throw new Error('request_not_found')
+      if (reqRow.distributor_id !== distributorId) throw new Error('forbidden')
+
+      const now = new Date().toISOString()
+
+      // Approve this request
+      const { error: updErr } = await sb
+        .from('salesperson_links')
+        .update({ status: 'approved', updated_at: now })
+        .eq('id', requestId)
+      if (updErr) throw updErr
+
+      // Unlink other approved links for this salesperson
+      const { error: unlinkOthersErr } = await sb
+        .from('salesperson_links')
+        .update({ status: 'unlinked', updated_at: now })
+        .eq('salesperson_id', reqRow.salesperson_id)
+        .neq('distributor_id', distributorId)
+        .eq('status', 'approved')
+      if (unlinkOthersErr) throw unlinkOthersErr
+
+      // Reject other pending requests for this salesperson
+      const { error: rejectPendingErr } = await sb
+        .from('salesperson_links')
+        .update({ status: 'rejected', updated_at: now })
+        .eq('salesperson_id', reqRow.salesperson_id)
+        .neq('distributor_id', distributorId)
+        .eq('status', 'pending')
+      if (rejectPendingErr) throw rejectPendingErr
+
+      return {
+        id: reqRow.id,
+        salespersonId: reqRow.salesperson_id,
+        distributorId: reqRow.distributor_id,
+        status: 'approved',
+        createdAt: reqRow.created_at,
+        updatedAt: now,
+      }
+    } catch (e) {
+      // Fallback to LowDB when table missing or errors
+    }
+  }
   await initDb()
   const req = db.data.salespersonLinks.find((r) => r.id === requestId)
   if (!req) throw new Error('request_not_found')
@@ -31,7 +104,6 @@ export async function approveSalespersonLinkRequest(requestId, distributorId) {
   const now = new Date().toISOString()
   req.status = 'approved'
   req.updatedAt = now
-  // Ensure only one active distributor per salesperson: unlink any other approved links
   const others = db.data.salespersonLinks.filter(
     (r) => r.salespersonId === req.salespersonId && r.distributorId !== distributorId
   )
@@ -56,6 +128,35 @@ export async function approveSalespersonLinkRequest(requestId, distributorId) {
 }
 
 export async function rejectSalespersonLinkRequest(requestId, distributorId) {
+  if (isSupabaseConfigured()) {
+    try {
+      const sb = getSupabaseAdmin()
+      const { data: reqRow, error: reqErr } = await sb
+        .from('salesperson_links')
+        .select('*')
+        .eq('id', requestId)
+        .maybeSingle()
+      if (reqErr) throw reqErr
+      if (!reqRow) throw new Error('request_not_found')
+      if (reqRow.distributor_id !== distributorId) throw new Error('forbidden')
+      const now = new Date().toISOString()
+      const { error: updErr } = await sb
+        .from('salesperson_links')
+        .update({ status: 'rejected', updated_at: now })
+        .eq('id', requestId)
+      if (updErr) throw updErr
+      return {
+        id: reqRow.id,
+        salespersonId: reqRow.salesperson_id,
+        distributorId: reqRow.distributor_id,
+        status: 'rejected',
+        createdAt: reqRow.created_at,
+        updatedAt: now,
+      }
+    } catch (e) {
+      // Fallback
+    }
+  }
   await initDb()
   const req = db.data.salespersonLinks.find((r) => r.id === requestId)
   if (!req) throw new Error('request_not_found')
@@ -68,8 +169,40 @@ export async function rejectSalespersonLinkRequest(requestId, distributorId) {
 
 // List currently linked salespersons (approved) for a distributor
 export async function listLinkedSalespersonsForDistributor(distributorId) {
+  if (isSupabaseConfigured()) {
+    try {
+      const sb = getSupabaseAdmin()
+      const { data, error } = await sb
+        .from('salesperson_links')
+        .select('*')
+        .eq('distributor_id', distributorId)
+        .order('updated_at', { ascending: false })
+      if (error) throw error
+      // Reduce to latest per salesperson
+      const bySalesperson = new Map()
+      for (const row of data || []) {
+        const key = row.salesperson_id
+        const prev = bySalesperson.get(key)
+        if (!prev || new Date(row.updated_at) > new Date(prev.updated_at)) {
+          bySalesperson.set(key, row)
+        }
+      }
+      const latest = Array.from(bySalesperson.values())
+      return latest
+        .filter(r => r.status === 'approved')
+        .map(row => ({
+          id: row.id,
+          salespersonId: row.salesperson_id,
+          distributorId: row.distributor_id,
+          status: row.status,
+          createdAt: row.created_at,
+          updatedAt: row.updated_at,
+        }))
+    } catch (e) {
+      // Fallback
+    }
+  }
   await initDb()
-  // Get latest record per salesperson for this distributor
   const bySalesperson = new Map()
   for (const r of db.data.salespersonLinks) {
     if (r.distributorId !== distributorId) continue
@@ -84,15 +217,38 @@ export async function listLinkedSalespersonsForDistributor(distributorId) {
 
 // Unlink salesperson from distributor (marks latest link as unlinked)
 export async function unlinkSalespersonFromDistributor(salespersonId, distributorId) {
+  if (isSupabaseConfigured()) {
+    try {
+      const sb = getSupabaseAdmin()
+      const now = new Date().toISOString()
+      const row = {
+        id: crypto.randomUUID(),
+        salesperson_id: salespersonId,
+        distributor_id: distributorId,
+        status: 'unlinked',
+        created_at: now,
+        updated_at: now,
+      }
+      const { error } = await sb.from('salesperson_links').insert(row)
+      if (error) throw error
+      return {
+        id: row.id,
+        salespersonId,
+        distributorId,
+        status: 'unlinked',
+        createdAt: now,
+        updatedAt: now,
+      }
+    } catch (e) {
+      // Fallback
+    }
+  }
   await initDb()
-  // Find latest record for this pair
   const latest = db.data.salespersonLinks
     .filter((r) => r.salespersonId === salespersonId && r.distributorId === distributorId)
     .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))[0]
   if (!latest) throw new Error('link_not_found')
-  // Only allow unlink if currently approved or pending
   const now = new Date().toISOString()
-  // Record state change to unlinked as a new entry to preserve history
   const newRec = {
     id: crypto.randomUUID(),
     salespersonId,
@@ -404,24 +560,89 @@ export async function updateUserProfile(userId, profileData) {
 // Salesperson link helper methods
 // -------------------------------
 export async function createSalespersonLinkRequest({ salespersonId, distributorId }) {
+  if (isSupabaseConfigured()) {
+    try {
+      const sb = getSupabaseAdmin()
+      const now = new Date().toISOString()
+      // Latest for salesperson
+      const { data: latestRows } = await sb
+        .from('salesperson_links')
+        .select('*')
+        .eq('salesperson_id', salespersonId)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+      const latest = latestRows && latestRows[0]
+      if (latest && latest.status === 'approved') {
+        throw new Error('already_linked_active')
+      }
+      // Pending same distributor?
+      const { data: pendingSame } = await sb
+        .from('salesperson_links')
+        .select('*')
+        .eq('salesperson_id', salespersonId)
+        .eq('distributor_id', distributorId)
+        .eq('status', 'pending')
+        .limit(1)
+      if (pendingSame && pendingSame.length) throw new Error('already_requested')
+      // Pending any → update to new distributor
+      const { data: pendingAny } = await sb
+        .from('salesperson_links')
+        .select('*')
+        .eq('salesperson_id', salespersonId)
+        .eq('status', 'pending')
+        .limit(1)
+      if (pendingAny && pendingAny.length) {
+        const pid = pendingAny[0].id
+        const { error: updErr } = await sb
+          .from('salesperson_links')
+          .update({ distributor_id: distributorId, updated_at: now })
+          .eq('id', pid)
+        if (updErr) throw updErr
+        return {
+          id: pid,
+          salespersonId,
+          distributorId,
+          status: 'pending',
+          createdAt: pendingAny[0].created_at,
+          updatedAt: now,
+        }
+      }
+      const rec = {
+        id: crypto.randomUUID(),
+        salesperson_id: salespersonId,
+        distributor_id: distributorId,
+        status: 'pending',
+        created_at: now,
+        updated_at: now,
+      }
+      const { error } = await sb.from('salesperson_links').insert(rec)
+      if (error) throw error
+      return {
+        id: rec.id,
+        salespersonId,
+        distributorId,
+        status: 'pending',
+        createdAt: now,
+        updatedAt: now,
+      }
+    } catch (e) {
+      // Fallback to LowDB
+    }
+  }
   await initDb()
   const now = new Date().toISOString()
-  // Enforce constraints
-  // 1) If salesperson currently has an approved link (to any distributor), block until unlinked
   const latest = db.data.salespersonLinks
     .filter((r) => r.salespersonId === salespersonId)
     .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))[0]
   if (latest && latest.status === 'approved') {
     throw new Error('already_linked_active')
   }
-  // 2) If there is a pending request to the same distributor, do not create duplicate
   const pendingSame = db.data.salespersonLinks.find(
     (r) => r.salespersonId === salespersonId && r.distributorId === distributorId && r.status === 'pending'
   )
   if (pendingSame) {
     throw new Error('already_requested')
   }
-  // 3) If there is a pending request to a different distributor, update that record to point here
   let pendingAny = db.data.salespersonLinks.find(
     (r) => r.salespersonId === salespersonId && r.status === 'pending'
   )
@@ -431,7 +652,6 @@ export async function createSalespersonLinkRequest({ salespersonId, distributorI
     await db.write()
     return pendingAny
   }
-  // Otherwise create new pending request
   const rec = {
     id: crypto.randomUUID(),
     salespersonId,
@@ -446,8 +666,28 @@ export async function createSalespersonLinkRequest({ salespersonId, distributorI
 }
 
 export async function getSalespersonLinkStatus(salespersonId) {
+  if (isSupabaseConfigured()) {
+    try {
+      const sb = getSupabaseAdmin()
+      const { data, error } = await sb
+        .from('salesperson_links')
+        .select('*')
+        .eq('salesperson_id', salespersonId)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+      if (error) throw error
+      if (!data || !data.length) return { state: 'unlinked' }
+      const latest = data[0]
+      return {
+        state: latest.status,
+        distributorId: latest.distributor_id,
+        requestId: latest.id,
+      }
+    } catch (e) {
+      // Fallback
+    }
+  }
   await initDb()
-  // Find latest request by updatedAt
   const requests = db.data.salespersonLinks
     .filter((r) => r.salespersonId === salespersonId)
     .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
