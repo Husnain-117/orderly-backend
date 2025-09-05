@@ -11,6 +11,18 @@ function formatCurrency(n) {
   return `Rs${v.toFixed(2)}`;
 }
 
+// Theming for invoice (can be overridden via env)
+function getInvoiceTheme() {
+  const primary = process.env.INVOICE_PRIMARY_COLOR || '#10b981'; // emerald
+  const dark = '#0f172a'; // slate-900
+  const text = '#111827'; // gray-900
+  const muted = '#6b7280'; // gray-500
+  const border = '#e5e7eb'; // gray-200
+  const surface = '#ffffff';
+  const subtle = '#f8fafc'; // slate-50
+  return { primary, dark, text, muted, border, surface, subtle };
+}
+
 // Generic: ensure items carry product name/price/description before persisting
 async function enrichItemsWithProductDetails(items) {
   if (!Array.isArray(items)) return items;
@@ -34,6 +46,7 @@ async function enrichItemsWithProductDetails(items) {
 }
 
 function buildInvoiceHtml({ order, distributor, shop }) {
+  const theme = getInvoiceTheme();
   const org = distributor?.organizationName || distributor?.name || 'Distributor';
   const brand = org;
   const shopName = order?.shopName || shop?.organizationName || shop?.name || shop?.email || 'Shop';
@@ -70,69 +83,60 @@ function buildInvoiceHtml({ order, distributor, shop }) {
     .join('');
 
   return `
-  <div style="font-family:Arial,sans-serif;max-width:760px;margin:0 auto;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden">
-    <div style="background:#0ea5e9;color:white;padding:18px 20px;display:flex;align-items:center;justify-content:space-between">
-      <div style="font-size:20px;font-weight:700;letter-spacing:0.3px">${brand}</div>
-      <div style="font-size:14px;opacity:.95">Invoice</div>
-    </div>
-    <div style="padding:18px 20px;background:#f8fafc;border-bottom:1px solid #e5e7eb">
-      <div style="display:flex;gap:24px;flex-wrap:wrap">
+  <div style="font-family:Inter,Arial,sans-serif;max-width:860px;margin:0 auto;background:${theme.surface};border:1px solid ${theme.border};border-radius:12px;overflow:hidden">
+    <div style="padding:20px 24px;border-bottom:1px solid ${theme.border};background:${theme.subtle}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px">
         <div>
-          <div style="font-size:12px;color:#64748b">Invoice #</div>
-          <div style="font-weight:600">${orderId}</div>
+          <div style="font-size:22px;font-weight:800;color:${theme.text}">${brand}</div>
+          <div style="margin-top:4px;font-size:12px;color:${theme.muted}">Invoice #${orderId}</div>
         </div>
-        <div>
-          <div style="font-size:12px;color:#64748b">Date</div>
-          <div style="font-weight:600">${createdAt}</div>
-        </div>
-        <div>
-          <div style="font-size:12px;color:#64748b">Status</div>
-          <div style="font-weight:600;text-transform:capitalize">${order?.status || '-'}</div>
+        <div style="text-align:right">
+          <div style="font-size:24px;font-weight:800;color:${theme.primary}">TAX INVOICE</div>
+          <div style="margin-top:6px;font-size:12px;color:${theme.muted}">${createdAt}</div>
         </div>
       </div>
-      <div style="display:flex;gap:24px;flex-wrap:wrap;margin-top:14px">
-        <div style="min-width:260px">
-          <div style="font-size:12px;color:#64748b">From</div>
-          <div style="font-weight:600">${org}</div>
-          ${distributor?.email ? `<div style="font-size:12px;color:#475569">${distributor.email}</div>` : ''}
+      <div style="display:flex;gap:24px;flex-wrap:wrap;margin-top:16px">
+        <div style="flex:1;min-width:260px;background:#fff;border:1px solid ${theme.border};border-radius:8px;padding:12px 14px">
+          <div style="font-size:11px;color:${theme.muted};text-transform:uppercase;letter-spacing:.4px">Bill To</div>
+          <div style="font-weight:700;color:${theme.text}">${shopName}</div>
+          ${shop?.email ? `<div style=\"font-size:12px;color:${theme.muted}\">${shop.email}</div>` : ''}
         </div>
-        <div style="min-width:260px">
-          <div style="font-size:12px;color:#64748b">Bill To</div>
-          <div style="font-weight:600">${shopName}</div>
-          ${shop?.email ? `<div style="font-size:12px;color:#475569">${shop.email}</div>` : ''}
+        <div style="flex:1;min-width:260px;background:#fff;border:1px solid ${theme.border};border-radius:8px;padding:12px 14px">
+          <div style="font-size:11px;color:${theme.muted};text-transform:uppercase;letter-spacing:.4px">From</div>
+          <div style="font-weight:700;color:${theme.text}">${org}</div>
+          ${distributor?.email ? `<div style=\"font-size:12px;color:${theme.muted}\">${distributor.email}</div>` : ''}
         </div>
       </div>
     </div>
-    <div style="padding:6px 20px 18px 20px">
+    <div style="padding:10px 16px 20px 16px">
       <table style="width:100%;border-collapse:collapse;font-size:14px">
         <thead>
-          <tr style="background:#f1f5f9;text-align:left">
-            <th style="padding:10px;border-bottom:1px solid #e5e7eb;width:56px">#</th>
-            <th style="padding:10px;border-bottom:1px solid #e5e7eb">Product</th>
-            <th style="padding:10px;border-bottom:1px solid #e5e7eb;text-align:right;width:80px">Qty</th>
-            <th style="padding:10px;border-bottom:1px solid #e5e7eb;text-align:right;width:120px">Price</th>
-            <th style="padding:10px;border-bottom:1px solid #e5e7eb;text-align:right;width:140px">Total</th>
+          <tr style="background:${theme.subtle}">
+            <th style="padding:10px;border-bottom:1px solid ${theme.border};width:56px;text-align:left;color:${theme.muted};font-weight:700">#</th>
+            <th style="padding:10px;border-bottom:1px solid ${theme.border};text-align:left;color:${theme.muted};font-weight:700">Item</th>
+            <th style="padding:10px;border-bottom:1px solid ${theme.border};text-align:right;width:90px;color:${theme.muted};font-weight:700">Qty</th>
+            <th style="padding:10px;border-bottom:1px solid ${theme.border};text-align:right;width:120px;color:${theme.muted};font-weight:700">Unit</th>
+            <th style="padding:10px;border-bottom:1px solid ${theme.border};text-align:right;width:140px;color:${theme.muted};font-weight:700">Amount</th>
           </tr>
         </thead>
         <tbody>
           ${rowsHtml}
         </tbody>
-        <tfoot>
-          <tr>
-            <td colspan="4" style="padding:10px;text-align:right;font-weight:600">Subtotal</td>
-            <td style="padding:10px;text-align:right;font-weight:600">${formatCurrency(subtotal)}</td>
-          </tr>
-          ${taxRate ? `<tr>
-            <td colspan="4" style="padding:10px;text-align:right;font-weight:600">Tax (${(taxRate*100).toFixed(0)}%)</td>
-            <td style="padding:10px;text-align:right;font-weight:600">${formatCurrency(tax)}</td>
-          </tr>` : ''}
-          <tr>
-            <td colspan="4" style="padding:10px;text-align:right;font-weight:800;border-top:1px solid #e5e7eb">Grand Total</td>
-            <td style="padding:10px;text-align:right;font-weight:800;border-top:1px solid #e5e7eb">${formatCurrency(grand)}</td>
-          </tr>
-        </tfoot>
       </table>
-      <div style="margin-top:18px;font-size:12px;color:#64748b">Thank you for your business.</div>
+      <div style="display:flex;justify-content:flex-end;margin-top:16px">
+        <div style="min-width:320px;border:1px solid ${theme.border};border-radius:10px;overflow:hidden">
+          <div style="display:flex;justify-content:space-between;padding:10px 12px;border-bottom:1px solid ${theme.border}">
+            <div style="font-weight:700;color:${theme.text}">Subtotal</div>
+            <div style="font-weight:700;color:${theme.text}">${formatCurrency(subtotal)}</div>
+          </div>
+          ${taxRate ? `<div style=\"display:flex;justify-content:space-between;padding:10px 12px;border-bottom:1px solid ${theme.border}\"><div style=\"font-weight:700;color:${theme.text}\">Tax (${(taxRate*100).toFixed(0)}%)</div><div style=\"font-weight:700;color:${theme.text}\">${formatCurrency(tax)}</div></div>` : ''}
+          <div style="display:flex;justify-content:space-between;padding:12px 12px;background:${theme.primary};color:white">
+            <div style="font-weight:800">Total</div>
+            <div style="font-weight:800">${formatCurrency(grand)}</div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:18px;font-size:12px;color:${theme.muted}">Thank you for your business.</div>
     </div>
   </div>`;
 }
@@ -209,41 +213,42 @@ export async function getInvoicePdf(req, res) {
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="invoice-${order.id}.pdf"`);
 
+    const theme = getInvoiceTheme();
     const doc = new PDFDocument({ size: 'A4', margin: 50 });
     doc.pipe(res);
 
     // Header
     const org = distributor?.organizationName || distributor?.name || 'Distributor';
     const shopName = order?.shopName || shop?.organizationName || shop?.name || shop?.email || 'Shop';
-    doc.fontSize(20).fillColor('#0ea5e9').text(org, { continued: false });
-    doc.fontSize(12).fillColor('#111827').text('Invoice', { align: 'right' });
+    doc.fontSize(22).fillColor(theme.primary).text(org, { continued: false });
+    doc.fontSize(12).fillColor(theme.text).text('TAX INVOICE', { align: 'right' });
     doc.moveDown();
 
     // Meta
-    doc.fontSize(10).fillColor('#6b7280');
+    doc.fontSize(10).fillColor(theme.muted);
     doc.text(`Invoice #: ${order.id}`);
     doc.text(`Date: ${new Date(order.createdAt || Date.now()).toLocaleString()}`);
     doc.text(`Status: ${String(order.status || '').toUpperCase()}`);
     doc.moveDown();
 
     // Parties
-    doc.fontSize(12).fillColor('#111827').text('From:', { underline: true });
+    doc.fontSize(12).fillColor(theme.text).text('From:', { underline: true });
     doc.fontSize(10).fillColor('#374151').text(org);
     if (distributor?.email) doc.text(distributor.email);
     doc.moveDown(0.5);
-    doc.fontSize(12).fillColor('#111827').text('Bill To:', { underline: true });
+    doc.fontSize(12).fillColor(theme.text).text('Bill To:', { underline: true });
     doc.fontSize(10).fillColor('#374151').text(shopName);
     if (shop?.email) doc.text(shop.email);
     doc.moveDown();
 
     // Table header
-    doc.fontSize(11).fillColor('#111827');
+    doc.fontSize(11).fillColor(theme.text);
     doc.text('#', 50, doc.y, { continued: true });
     doc.text('Product', 80, undefined, { continued: true });
     doc.text('Qty', 320, undefined, { continued: true, align: 'right' });
     doc.text('Price', 380, undefined, { continued: true, align: 'right' });
     doc.text('Total', 460, undefined, { align: 'right' });
-    doc.moveTo(50, doc.y + 4).lineTo(545, doc.y + 4).strokeColor('#e5e7eb').stroke();
+    doc.moveTo(50, doc.y + 4).lineTo(545, doc.y + 4).strokeColor(theme.border).stroke();
 
     // Rows
     const lines = (order.items || []).map((it, i) => ({
@@ -267,9 +272,9 @@ export async function getInvoicePdf(req, res) {
 
     // Totals
     doc.moveDown();
-    doc.moveTo(300, doc.y).lineTo(545, doc.y).strokeColor('#e5e7eb').stroke();
+    doc.moveTo(300, doc.y).lineTo(545, doc.y).strokeColor(theme.border).stroke();
     doc.moveDown(0.3);
-    doc.fontSize(11).fillColor('#111827');
+    doc.fontSize(11).fillColor(theme.text);
     doc.text('Subtotal', 320, doc.y, { continued: true, align: 'right' });
     doc.text(`Rs${subtotal.toFixed(2)}`, 460, undefined, { align: 'right' });
     const taxRate = 0;
@@ -279,12 +284,15 @@ export async function getInvoicePdf(req, res) {
       doc.text(`Rs${tax.toFixed(2)}`, 460, undefined, { align: 'right' });
     }
     const grand = subtotal + tax;
-    doc.font('Helvetica-Bold');
+    doc.font('Helvetica-Bold').fillColor(theme.text);
     doc.text('Grand Total', 320, undefined, { continued: true, align: 'right' });
     doc.text(`Rs${grand.toFixed(2)}`, 460, undefined, { align: 'right' });
-    doc.font('Helvetica');
+    doc.rect(300, doc.y + 6, 245, 22).fillAndStroke(theme.primary, theme.primary);
+    doc.fillColor('#ffffff').font('Helvetica-Bold').text('Total', 320, doc.y + 9, { continued: true, align: 'right' });
+    doc.text(`Rs${grand.toFixed(2)}`, 460, doc.y + 9, { align: 'right' });
+    doc.fillColor(theme.text).font('Helvetica');
     doc.moveDown();
-    doc.fontSize(9).fillColor('#6b7280').text('Thank you for your business.');
+    doc.fontSize(9).fillColor(theme.muted).text('Thank you for your business.');
 
     doc.end();
   } catch (err) {
