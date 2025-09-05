@@ -247,14 +247,46 @@ export async function confirmOrder(orderId, distributorId, distributorName) {
 export async function getOrdersByDistributor(distributorId) {
   if (isSupabaseConfigured()) {
     const sb = getSupabaseAdmin()
-    // No direct distributorId column in schema; if you later add such relation, filter here.
-    // For now, return all confirmed/shipped orders as a placeholder (adjust once distributor relation is formalized)
-    const { data: orders, error } = await sb.from('orders').select('*, order_items(*)').in('status', ['pending','confirmed','accepted','placed','out_for_delivery','delivered']).order('created_at', { ascending: false })
-    if (error) throw new Error(error.message)
+    // Scope by distributor's products.
+    // 1) Get product IDs owned by distributor
+    const { data: prods, error: pErr } = await sb
+      .from('products')
+      .select('id')
+      .eq('owner_user_id', distributorId)
+    if (pErr) throw new Error(pErr.message)
+    const productIds = (prods || []).map(p => p.id)
+    if (!productIds.length) return []
+
+    // 2) Get order items that reference those product IDs
+    const { data: items, error: iErr } = await sb
+      .from('order_items')
+      .select('order_id, product_id, quantity, unit_price')
+      .in('product_id', productIds)
+    if (iErr) throw new Error(iErr.message)
+    if (!items || !items.length) return []
+
+    // 3) Collect order IDs and fetch those orders
+    const orderIds = Array.from(new Set(items.map(it => it.order_id)))
+    if (!orderIds.length) return []
+    const { data: orders, error: oErr } = await sb
+      .from('orders')
+      .select('*')
+      .in('id', orderIds)
+      .order('created_at', { ascending: false })
+    if (oErr) throw new Error(oErr.message)
+
+    // 4) Attach items to their orders
+    const itemsByOrder = new Map()
+    for (const it of items) {
+      const arr = itemsByOrder.get(it.order_id) || []
+      arr.push({ productId: it.product_id, qty: Number(it.quantity || 0), price: Number(it.unit_price || 0) })
+      itemsByOrder.set(it.order_id, arr)
+    }
+
     return (orders || []).map(o => ({
       id: o.id,
       userId: o.user_id,
-      items: (o.order_items || []).map(oi => ({ productId: oi.product_id, qty: oi.quantity, price: oi.unit_price })),
+      items: itemsByOrder.get(o.id) || [],
       status: o.status,
       createdAt: o.created_at,
     }))
