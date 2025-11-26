@@ -88,11 +88,14 @@ function buildInvoiceHtml({ order, distributor, shop }) {
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px">
         <div>
           <div style="font-size:22px;font-weight:800;color:${theme.text}">${brand}</div>
-          <div style="margin-top:4px;font-size:12px;color:${theme.muted}">Invoice #${orderId}</div>
+          ${distributor?.email ? `<div style=\"margin-top:2px;font-size:12px;color:${theme.muted}\">${distributor.email}</div>` : ''}
+          ${distributor?.address ? `<div style=\"font-size:12px;color:${theme.muted}\">${distributor.address}</div>` : ''}
         </div>
         <div style="text-align:right">
-          <div style="font-size:24px;font-weight:800;color:${theme.primary}">TAX INVOICE</div>
-          <div style="margin-top:6px;font-size:12px;color:${theme.muted}">${createdAt}</div>
+          <div style="font-size:24px;font-weight:800;color:${theme.primary}">SALES INVOICE</div>
+          <div style="margin-top:6px;font-size:12px;color:${theme.muted}">Invoice #${orderId}</div>
+          <div style="font-size:12px;color:${theme.muted}">${createdAt}</div>
+          <div style="margin-top:6px;font-size:10px;color:${theme.muted}">Powered by <strong>Orderly</strong></div>
         </div>
       </div>
       <div style="display:flex;gap:24px;flex-wrap:wrap;margin-top:16px">
@@ -100,11 +103,7 @@ function buildInvoiceHtml({ order, distributor, shop }) {
           <div style="font-size:11px;color:${theme.muted};text-transform:uppercase;letter-spacing:.4px">Bill To</div>
           <div style="font-weight:700;color:${theme.text}">${shopName}</div>
           ${shop?.email ? `<div style=\"font-size:12px;color:${theme.muted}\">${shop.email}</div>` : ''}
-        </div>
-        <div style="flex:1;min-width:260px;background:#fff;border:1px solid ${theme.border};border-radius:8px;padding:12px 14px">
-          <div style="font-size:11px;color:${theme.muted};text-transform:uppercase;letter-spacing:.4px">From</div>
-          <div style="font-weight:700;color:${theme.text}">${org}</div>
-          ${distributor?.email ? `<div style=\"font-size:12px;color:${theme.muted}\">${distributor.email}</div>` : ''}
+          ${shop?.address ? `<div style=\"font-size:12px;color:${theme.muted}\">${shop.address}</div>` : ''}
         </div>
       </div>
     </div>

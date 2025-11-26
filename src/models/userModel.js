@@ -13,7 +13,50 @@ const __dirname = path.dirname(__filename)
 const dataDir = path.join(__dirname, '../../data')
 const dbFile = path.join(dataDir, 'db.json')
 
-const defaultData = { users: [], salespersonLinks: [] }
+const defaultData = { users: [], salespersonLinks: [], shopFollows: [] }
+
+// ---- Shopkeeper <-> Distributor follows (append) ----
+export async function listFollowsForUser(userId) {
+  if (isSupabaseConfigured()) {
+    const sb = getSupabaseAdmin()
+    const { data, error } = await sb.from('shop_follows').select('distributor_id, created_at').eq('user_id', userId)
+    if (error) throw new Error(error.message)
+    return (data || []).map(r => ({ distributorId: r.distributor_id, createdAt: r.created_at }))
+  }
+  await initDb()
+  return (db.data.shopFollows || []).filter(r => r.userId === userId)
+}
+
+export async function followDistributor(userId, distributorId) {
+  if (isSupabaseConfigured()) {
+    const sb = getSupabaseAdmin()
+    const now = new Date().toISOString()
+    const row = { user_id: userId, distributor_id: distributorId, created_at: now }
+    const { error } = await sb.from('shop_follows').upsert(row, { onConflict: 'user_id,distributor_id' })
+    if (error) throw new Error(error.message)
+    return { userId, distributorId, createdAt: now }
+  }
+  await initDb()
+  const exists = (db.data.shopFollows || []).find(r => r.userId === userId && r.distributorId === distributorId)
+  if (!exists) {
+    db.data.shopFollows.push({ userId, distributorId, createdAt: new Date().toISOString() })
+    await db.write()
+  }
+  return { userId, distributorId }
+}
+
+export async function unfollowDistributor(userId, distributorId) {
+  if (isSupabaseConfigured()) {
+    const sb = getSupabaseAdmin()
+    const { error } = await sb.from('shop_follows').delete().eq('user_id', userId).eq('distributor_id', distributorId)
+    if (error) throw new Error(error.message)
+    return true
+  }
+  await initDb()
+  db.data.shopFollows = (db.data.shopFollows || []).filter(r => !(r.userId === userId && r.distributorId === distributorId))
+  await db.write()
+  return true
+}
 
 // List salesperson link requests for a given distributor
 export async function listSalespersonLinkRequestsForDistributor(distributorId) {
@@ -274,6 +317,7 @@ export async function initDb() {
   db.data ||= { ...defaultData }
   db.data.users ||= []
   db.data.salespersonLinks ||= []
+  db.data.shopFollows ||= []
   // Optional env-based seeding for serverless/memory DBs
   try {
     if (!db.data.users.length) {

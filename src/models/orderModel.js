@@ -74,6 +74,7 @@ export async function createOrder({ userId, items, distributorId, distributorNam
     shopName,
     status: 'pending',
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   };
   db.data.orders.push(order);
   await db.write();
@@ -127,6 +128,7 @@ export async function updateOrderItems(orderId, items) {
   const order = db.data.orders.find(o => o.id === orderId);
   if (order && order.status === 'pending') {
     order.items = items;
+    order.updatedAt = new Date().toISOString();
     await db.write();
     return order;
   }

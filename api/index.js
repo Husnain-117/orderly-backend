@@ -31,6 +31,10 @@ const allowAllInDev = process.env.NODE_ENV !== 'production';
 function isAllowedOrigin(origin) {
   if (!origin) return true;
   const o = normalizeOrigin(origin);
+  
+  // Allow all Vercel preview deployments (*.vercel.app)
+  if (o.endsWith('.vercel.app')) return true;
+  
   for (const pat of rawOrigins) {
     if (pat === o) return true;
     if (pat.startsWith('*.') && o.endsWith(pat.slice(1))) return true;

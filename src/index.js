@@ -9,6 +9,7 @@ import orderRoutes from './routes/orderRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
 import linkRoutes from './routes/linkRoutes.js';
+import shopRoutes from './routes/shopRoutes.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -84,6 +85,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/links', linkRoutes);
+app.use('/api/shop', shopRoutes);
 
 app.listen(PORT, () => {
   // eslint-disable-next-line no-console

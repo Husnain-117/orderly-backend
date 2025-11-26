@@ -22,11 +22,26 @@ export async function create(req, res) {
 }
 
 // List all products with distributor name (public)
-import { initDb as initUserDb } from '../models/userModel.js';
+import { initDb as initUserDb, listFollowsForUser } from '../models/userModel.js';
 import { getSupabaseAdmin, isSupabaseConfigured } from '../lib/supabase.js';
+import jwt from 'jsonwebtoken';
 
-export async function listAllPublic(_req, res) {
+export async function listAllPublic(req, res) {
   try {
+    const followedOnly = String(req.query.followedOnly || '').toLowerCase() === 'true';
+    // Try to resolve current user id from sid cookie when needed
+    let currentUserId = null;
+    if (followedOnly) {
+      try {
+        const token = req.cookies?.sid;
+        const secret = process.env.JWT_SECRET || (process.env.NODE_ENV !== 'production' ? 'dev-secret-change-me' : undefined);
+        if (!token || !secret) throw new Error('unauthorized');
+        const payload = jwt.verify(token, secret);
+        currentUserId = payload?.id || null;
+      } catch {
+        return res.status(401).json({ error: 'unauthorized' });
+      }
+    }
     // Get products
     const products = await listProducts();
     // Get distributors (users with role=distributor)
@@ -49,7 +64,18 @@ export async function listAllPublic(_req, res) {
       users = userDb.data?.users || [];
     }
     // Attach distributor name and ensure image URLs are complete
-    const result = products.map((p) => {
+    // Optionally filter by followed distributors
+    let ownerWhitelist = null;
+    if (followedOnly && currentUserId) {
+      try {
+        const follows = await listFollowsForUser(currentUserId);
+        ownerWhitelist = new Set((follows || []).map((f) => f.distributorId));
+      } catch {}
+    }
+
+    const result = products
+      .filter((p) => (ownerWhitelist ? ownerWhitelist.has(p.ownerId) : true))
+      .map((p) => {
       const owner = users.find((u) => u.id === p.ownerId);
       let imageUrl = p.image;
       

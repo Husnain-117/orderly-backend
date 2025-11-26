@@ -40,6 +40,45 @@ export async function sendOtp(req, res) {
   }
 }
 
+// Public: Get a single distributor public profile by ID
+export async function getDistributorPublicProfile(req, res) {
+  try {
+    const { id } = req.params || {};
+    if (!id) return res.status(400).json({ error: 'id is required' });
+    if (isSupabaseConfigured()) {
+      const sb = getSupabaseAdmin();
+      const { data, error } = await sb
+        .from('users')
+        .select('id, email, role, organization_name, created_at, name, address, phone, photo')
+        .eq('id', id)
+        .eq('role', 'distributor')
+        .single();
+      if (error || !data) return res.status(404).json({ error: 'not_found' });
+      const out = {
+        id: data.id,
+        email: data.email,
+        role: data.role,
+        organizationName: data.organization_name || null,
+        createdAt: data.created_at,
+        name: data.name || null,
+        address: data.address || null,
+        phone: data.phone || null,
+        photo: data.photo || null,
+      };
+      return res.json({ ok: true, distributor: out });
+    }
+    
+    // LowDB fallback
+    const db = await initDb();
+    const u = (db.data?.users || []).find((x) => x.id === id && x.role === 'distributor');
+    if (!u) return res.status(404).json({ error: 'not_found' });
+    const { passwordHash, ...safe } = u;
+    return res.json({ ok: true, distributor: safe });
+  } catch (err) {
+    return res.status(500).json({ error: err.message || 'failed to fetch distributor' });
+  }
+}
+
 // Distributor: list linked salespersons (approved)
 export async function distributorListSalespersons(req, res) {
   try {

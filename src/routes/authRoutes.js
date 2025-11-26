@@ -1,11 +1,13 @@
 import { Router } from 'express';
-import { listDistributors } from '../controllers/authController.js';
+import { listDistributors, getDistributorPublicProfile } from '../controllers/authController.js';
 import { sendOtp, verifyOtp, register, login, logout, me, forgotPasswordSendOtp, resetPassword, getProfile, updateProfile, salespersonRequestLink, salespersonLinkStatus, distributorListSalespersonRequests, distributorApproveSalespersonRequest, distributorRejectSalespersonRequest, distributorListSalespersons, distributorUnlinkSalesperson } from '../controllers/authController.js';
 
 const router = Router();
 
 // Public: list all distributors
 router.get('/distributors', listDistributors);
+// Public: get one distributor by id
+router.get('/distributors/:id', getDistributorPublicProfile);
 
 router.post('/send-otp', sendOtp);
 router.post('/verify-otp', verifyOtp);
